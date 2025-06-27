@@ -10,29 +10,29 @@ module Slot #(
 ) (
     input wire clk,
     input wire reset,
-    input wire [INPUT_IDX_WIDTH-1: 0]    inputIdx,
+    input wire [INPUT_IDX_WIDTH-1: 0] inputIdx,
 
-    // set Input ports
-    input wire [SRC_ADDR_WIDTH-1:0] inp_src_addr,
-    input wire [SRC_SIZE_WIDTH-1:0] inp_src_size,
-    input wire [DST_ADDR_WIDTH-1:0] inp_des_addr,
-    input wire [DST_SIZE_WIDTH-1:0] inp_des_size,
-    input wire [STATUS_WIDTH-1:0]   inp_status,
-    input wire [PROFILE_WIDTH-1:0]  inp_profile,
+    // set Input ports 
+    input wire [SRC_ADDR_WIDTH-1:0]   inp_src_addr,
+    input wire [SRC_SIZE_WIDTH-1:0]   inp_src_size,
+    input wire [DST_ADDR_WIDTH-1:0]   inp_des_addr,
+    input wire [DST_SIZE_WIDTH-1:0]   inp_des_size,
+    input wire [STATUS_WIDTH  -1:0]   inp_status,
+    input wire [PROFILE_WIDTH -1:0]   inp_profile,
     // set trigger ports
-    input wire                      set_src_addr,
-    input wire                      set_src_size,
-    input wire                      set_des_addr,
-    input wire                      set_des_size,
-    input wire                      set_status,
-    input wire                      set_profile,
+    input wire                        set_src_addr,
+    input wire                        set_src_size,
+    input wire                        set_des_addr,
+    input wire                        set_des_size,
+    input wire                        set_status,
+    input wire                        set_profile,
     // dest output ports
-    output reg [SRC_ADDR_WIDTH-1:0] out_src_addr,
-    output reg [SRC_SIZE_WIDTH-1:0] out_src_size,
-    output reg [DST_ADDR_WIDTH-1:0] out_des_addr,
-    output reg [DST_SIZE_WIDTH-1:0] out_des_size,
-    output reg [STATUS_WIDTH  -1:0] out_status,
-    output reg [PROFILE_WIDTH -1:0] out_profile
+    output reg [SRC_ADDR_WIDTH-1:0]   out_src_addr,
+    output reg [SRC_SIZE_WIDTH-1:0]   out_src_size,
+    output reg [DST_ADDR_WIDTH-1:0]   out_des_addr,
+    output reg [DST_SIZE_WIDTH-1:0]   out_des_size,
+    output reg [STATUS_WIDTH  -1:0]   out_status,
+    output reg [PROFILE_WIDTH -1:0]   out_profile
 );
 
 
@@ -51,25 +51,13 @@ always @(posedge clk ) begin
         if (inputIdx == CUR_IDX) begin
             // Only update the output if the input index matches the current index
             // This allows for multiple slots to be used in parallel without interference
-            if (set_src_addr) begin
-            out_src_addr <= inp_src_addr;
-            end
-            if (set_src_size) begin
-                out_src_size <= inp_src_size;
-            end
-            if (set_des_addr) begin
-                out_des_addr <= inp_des_addr; // Assuming des_addr is same as src_addr
-            end
-            if (set_des_size) begin
-                out_des_size <= inp_des_size; // Assuming des_size is same as src_size
-            end
-            if (set_status) begin
-                out_status   <= inp_status;
-            end
-            if (set_profile) begin
-                out_profile  <= inp_profile;
-            end
-            end
+            if (set_src_addr) begin out_src_addr <= inp_src_addr; end
+            if (set_src_size) begin out_src_size <= inp_src_size; end
+            if (set_des_addr) begin out_des_addr <= inp_des_addr; end // Assuming des_addr is same as src_addr
+            if (set_des_size) begin out_des_size <= inp_des_size; end // Assuming des_size is same as src_size
+            if (set_status)   begin out_status   <= inp_status;   end
+            if (set_profile)  begin out_profile  <= inp_profile;  end
+        end
     end
 
 end

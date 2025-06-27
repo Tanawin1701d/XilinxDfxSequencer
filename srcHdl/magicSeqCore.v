@@ -10,7 +10,7 @@ module MagicSeqCore #(
 
     parameter BANK0_CONTROL_WIDTH = 4,
     parameter BANK0_STATUS_WIDTH  = 4,
-    parameter BANK0_CNT_WIDTH = BANK1_INDEX_WIDTH /// the counter for the sequencer
+    parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH /// the counter for the sequencer
 
 
 ) (
@@ -36,12 +36,12 @@ module MagicSeqCore #(
     input wire ext_bank1_set_status,
     input wire ext_bank1_set_profile,
 
-    output wire ext_bank1_set_actual_src_addr, /// status of the register
-    output wire ext_bank1_set_actual_src_size, /// status of the register
-    output wire ext_bank1_set_actual_des_addr, /// status of the register
-    output wire ext_bank1_set_actual_des_size, /// status of the register
-    output wire ext_bank1_set_actual_status, /// status of the register  
-    output wire ext_bank1_set_actual_profile, /// status of the register 
+    output wire ext_bank1_set_fin_src_addr,   /// the result external setting 
+    output wire ext_bank1_set_fin_src_size,   /// the result external setting 
+    output wire ext_bank1_set_fin_des_addr,   /// the result external setting 
+    output wire ext_bank1_set_fin_des_size,   /// the result external setting 
+    output wire ext_bank1_set_fin_status,     /// the result external setting   
+    output wire ext_bank1_set_fin_profile,    /// the result external setting  
 
     // retriever from outsider
     input  wire [BANK1_INDEX_WIDTH    -1:0] ext_bank1_out_index,
@@ -58,11 +58,12 @@ module MagicSeqCore #(
     //////////////////////////////////////////////////////////
     // outsider interface bank0 (typically from PS)///////////
     //////////////////////////////////////////////////////////
-    input wire [BANK0_CONTROL_WIDTH-1:0] ext_bank0_inp_control, /// read only
-    input wire                           ext_bank0_set_control, /// set control
+    input wire [BANK0_CONTROL_WIDTH-1:0] ext_bank0_inp_control, /// set control data
+    input wire                           ext_bank0_set_control, /// set control signal
 
     output wire [BANK0_STATUS_WIDTH-1:0] ext_bank0_out_status,  /// read only and it is reg
-    output wire [BANK0_CNT_WIDTH-1:0]    ext_bank0_out_mainCnt,     /// read only
+
+    output wire [BANK0_CNT_WIDTH   -1:0] ext_bank0_out_mainCnt,     /// read only
 
     input  wire [BANK0_CNT_WIDTH-1:0]    ext_bank0_inp_endCnt,      ///
     input  wire                          ext_bank0_set_endCnt,      ///
@@ -108,22 +109,26 @@ localparam CTRL_START            = 4'b0010;
 reg [BANK0_STATUS_WIDTH-1:0]    mainStatus;
 reg [BANK0_CNT_WIDTH   -1:0]    mainCnt;
 reg [BANK0_CNT_WIDTH   -1:0]    endCnt;
+/////////////////////////////////////////////////
+////// BANK 1 slot table wire declaration ///////
+/////////////////////////////////////////////////
 
-////// BANK 1 slot table wiring
+
+////// the writing side signal
+
+//////////////  the input pool
+
 wire [BANK1_INDEX_WIDTH    -1:0] bank1_inp_index; // actually it is a wire
 wire [BANK1_PROFILE_WIDTH  -1:0] bank1_inp_profile; // it must share with ps and auto inc
 
-wire bank1_set_actual_src_addr;
-wire bank1_set_actual_src_size;
-wire bank1_set_actual_des_addr;
-wire bank1_set_actual_des_size;
-wire bank1_set_actual_status;
-wire bank1_set_actual_profile;
+wire bank1_set_fin_src_addr;
+wire bank1_set_fin_src_size;
+wire bank1_set_fin_des_addr;
+wire bank1_set_fin_des_size;
+wire bank1_set_fin_status;
+wire bank1_set_fin_profile;
 
-wire [BANK1_PROFILE_WIDTH-1: 0]slave_bank1_inp_profile;
-
-
-////// the outpool
+//////////////  the out pool
 wire [BANK1_INDEX_WIDTH    -1:0] bank1_out_index; // actually it is a wire
 wire [BANK1_DST_ADDR_WIDTH -1:0] bank1_out_src_addr;      // actually it is a reg
 wire [BANK1_DST_SIZE_WIDTH -1:0] bank1_out_src_size;      // actually it is a reg
@@ -155,6 +160,7 @@ assign ext_bank0_out_mainCnt = mainCnt;
 ///////////////////////////////////
 //////////// end counter setting///
 ///////////////////////////////////
+assign ext_bank0_out_endCnt = endCnt;
 always @(posedge clk) begin
     if (reset) begin
         endCnt  <= 0;
@@ -166,8 +172,6 @@ always @(posedge clk) begin
     end
     // otherwise, we do not allow to set the endCnt register
 end
-assign ext_bank0_out_endCnt = endCnt;
-
 
 ///////////////////////////////////
 //////////// bank1 slot         ///
@@ -202,24 +206,24 @@ wire ext_bank1_mainActual_set_req = (mainStatus == STATUS_SHUTDOWN) &&
                                     (ext_bank1_set_src_addr | ext_bank1_set_src_size |
                                      ext_bank1_set_des_addr | ext_bank1_set_des_size |
                                      ext_bank1_set_status   | ext_bank1_set_profile);
-assign ext_bank1_set_actual_src_addr   = ext_bank1_mainActual_set_req & ext_bank1_set_src_addr;
-assign ext_bank1_set_actual_src_size   = ext_bank1_mainActual_set_req & ext_bank1_set_src_size;
-assign ext_bank1_set_actual_des_addr   = ext_bank1_mainActual_set_req & ext_bank1_set_des_addr;
-assign ext_bank1_set_actual_des_size   = ext_bank1_mainActual_set_req & ext_bank1_set_des_size;
-assign ext_bank1_set_actual_status     = ext_bank1_mainActual_set_req & ext_bank1_set_status;
-assign ext_bank1_set_actual_profile    = ext_bank1_mainActual_set_req & ext_bank1_set_profile;
+assign ext_bank1_set_fin_src_addr   = ext_bank1_mainActual_set_req & ext_bank1_set_src_addr;
+assign ext_bank1_set_fin_src_size   = ext_bank1_mainActual_set_req & ext_bank1_set_src_size;
+assign ext_bank1_set_fin_des_addr   = ext_bank1_mainActual_set_req & ext_bank1_set_des_addr;
+assign ext_bank1_set_fin_des_size   = ext_bank1_mainActual_set_req & ext_bank1_set_des_size;
+assign ext_bank1_set_fin_status     = ext_bank1_mainActual_set_req & ext_bank1_set_status;
+assign ext_bank1_set_fin_profile    = ext_bank1_mainActual_set_req & ext_bank1_set_profile;
 
-///////////// writing from profiler
+///////////// writing profiler data
 
-assign slave_bank1_inp_profile = (mainStatus == STATUS_REPROG) ? (slave_bank1_out_profile + 1) : ext_bank1_inp_profile;
+assign bank1_inp_profile = (mainStatus == STATUS_REPROG) ? (slave_bank1_out_profile + 1) : ext_bank1_inp_profile;
 
 ////////////// writing pool
-assign bank1_set_actual_src_addr       = ext_bank1_set_actual_src_addr;
-assign bank1_set_actual_src_size       = ext_bank1_set_actual_src_size;
-assign bank1_set_actual_des_addr       = ext_bank1_set_actual_des_addr;
-assign bank1_set_actual_des_size       = ext_bank1_set_actual_des_size;
-assign bank1_set_actual_status         = ext_bank1_set_actual_status;
-assign bank1_set_actual_profile        = ext_bank1_set_actual_profile | (mainStatus == STATUS_REPROG); 
+assign bank1_set_fin_src_addr       = ext_bank1_set_fin_src_addr;
+assign bank1_set_fin_src_size       = ext_bank1_set_fin_src_size;
+assign bank1_set_fin_des_addr       = ext_bank1_set_fin_des_addr;
+assign bank1_set_fin_des_size       = ext_bank1_set_fin_des_size;
+assign bank1_set_fin_status         = ext_bank1_set_fin_status;
+assign bank1_set_fin_profile        = ext_bank1_set_fin_profile | (mainStatus == STATUS_REPROG); 
 
 
 //////////////////////////////////////////////
@@ -244,7 +248,7 @@ always @(posedge clk ) begin
             end
             CTRL_START: begin
                 if (mainStatus == STATUS_SHUTDOWN) begin
-                    mainStatus <= STATUS_INITIALIZING;
+                    mainStatus <= STATUS_REPROG;
                     mainCnt    <= 0; // reset the counter
                 end
             end
@@ -283,10 +287,10 @@ always @(posedge clk ) begin
                     // the slave has finished executing, we can go to the next step
                     if (mainCnt < endCnt) begin
                         mainCnt <= mainCnt + 1; // increment the counter
-                        mainStatus <= STATUS_INITIALIZING; // go back to initializing state
+                        mainStatus <= STATUS_REPROG; // go back to initializing state
                     end else begin
                         mainCnt    <= 0; // reset the counter
-                        mainStatus <= STATUS_REPROG; // go back to shutdown state
+                        mainStatus <= STATUS_SHUTDOWN; // go back to shutdown state
                     end
                 end
             end
@@ -324,14 +328,14 @@ SlotArr #(
     .inp_des_addr  (ext_bank1_inp_des_addr),
     .inp_des_size  (ext_bank1_inp_des_size),
     .inp_status    (ext_bank1_inp_status),
-    .inp_profile   (slave_bank1_inp_profile), // it must share with ps and auto inc
+    .inp_profile   (bank1_inp_profile), // it must share with ps and auto inc
 
-    .set_src_addr  (bank1_set_actual_src_addr),
-    .set_src_size  (bank1_set_actual_src_size),
-    .set_des_addr  (bank1_set_actual_des_addr),
-    .set_des_size  (bank1_set_actual_des_size),
-    .set_status    (bank1_set_actual_status  ),
-    .set_profile   (bank1_set_actual_profile ),
+    .set_src_addr  (bank1_set_fin_src_addr),
+    .set_src_size  (bank1_set_fin_src_size),
+    .set_des_addr  (bank1_set_fin_des_addr),
+    .set_des_size  (bank1_set_fin_des_size),
+    .set_status    (bank1_set_fin_status  ),
+    .set_profile   (bank1_set_fin_profile ),
 
     // Output ports0
     .out_index     (bank1_out_index),

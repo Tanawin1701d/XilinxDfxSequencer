@@ -11,13 +11,13 @@ module SlotArr #(
     input wire clk,
     input wire reset,
     // Declare an array of slots
-    input wire [INDEX_WIDTH-1:0]    inp_index,
+    input wire [INDEX_WIDTH   -1:0] inp_index,
     input wire [SRC_ADDR_WIDTH-1:0] inp_src_addr,
     input wire [SRC_SIZE_WIDTH-1:0] inp_src_size,
     input wire [DST_ADDR_WIDTH-1:0] inp_des_addr,
     input wire [DST_SIZE_WIDTH-1:0] inp_des_size,
-    input wire [STATUS_WIDTH-1:0]   inp_status,
-    input wire [PROFILE_WIDTH-1:0]  inp_profile,
+    input wire [STATUS_WIDTH  -1:0] inp_status,
+    input wire [PROFILE_WIDTH -1:0] inp_profile,
 
     input wire set_src_addr,
     input wire set_src_size,
@@ -37,15 +37,12 @@ module SlotArr #(
 );
 
 
-    wire [DST_ADDR_WIDTH-1:0] out_src_addr_pool    [0: (1 << INDEX_WIDTH)];
-    wire [DST_SIZE_WIDTH-1:0] out_src_size_pool    [0: (1 << INDEX_WIDTH)];
-    wire [DST_ADDR_WIDTH-1:0] out_des_addr_pool    [0: (1 << INDEX_WIDTH)];
-    wire [DST_SIZE_WIDTH-1:0] out_des_size_pool    [0: (1 << INDEX_WIDTH)];
-    wire [STATUS_WIDTH-1:0]   out_status_pool      [0: (1 << INDEX_WIDTH)];
-    wire [PROFILE_WIDTH-1:0]  out_profile_pool     [0: (1 << INDEX_WIDTH)];
-
-
-
+    wire [DST_ADDR_WIDTH-1:0] out_src_addr_pool [0: (1 << INDEX_WIDTH)];
+    wire [DST_SIZE_WIDTH-1:0] out_src_size_pool [0: (1 << INDEX_WIDTH)];
+    wire [DST_ADDR_WIDTH-1:0] out_des_addr_pool [0: (1 << INDEX_WIDTH)];
+    wire [DST_SIZE_WIDTH-1:0] out_des_size_pool [0: (1 << INDEX_WIDTH)];
+    wire [STATUS_WIDTH  -1:0] out_status_pool   [0: (1 << INDEX_WIDTH)];
+    wire [PROFILE_WIDTH -1:0] out_profile_pool  [0: (1 << INDEX_WIDTH)];
 
     // Instantiate the Slot module for each slot in the array
     genvar i;
