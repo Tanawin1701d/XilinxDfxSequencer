@@ -6,7 +6,7 @@ module SlotArr #(
     parameter DST_ADDR_WIDTH = 32,
     parameter DST_SIZE_WIDTH = 26,
     parameter STATUS_WIDTH   = 2,
-    parameter PROFILE_WIDTH  = 4
+    parameter PROFILE_WIDTH  = 32
 )(
     input wire clk,
     input wire reset,
@@ -14,11 +14,15 @@ module SlotArr #(
     input wire [INDEX_WIDTH-1:0]    inp_index,
     input wire [SRC_ADDR_WIDTH-1:0] inp_src_addr,
     input wire [SRC_SIZE_WIDTH-1:0] inp_src_size,
+    input wire [DST_ADDR_WIDTH-1:0] inp_des_addr,
+    input wire [DST_SIZE_WIDTH-1:0] inp_des_size,
     input wire [STATUS_WIDTH-1:0]   inp_status,
     input wire [PROFILE_WIDTH-1:0]  inp_profile,
 
     input wire set_src_addr,
     input wire set_src_size,
+    input wire set_des_addr,
+    input wire set_des_size,
     input wire set_status,
     input wire set_profile,
 
@@ -26,6 +30,8 @@ module SlotArr #(
     input wire [INDEX_WIDTH-1:0]    out_index,
     output reg [DST_ADDR_WIDTH-1:0] out_src_addr,      // actually it is a wire
     output reg [DST_SIZE_WIDTH-1:0] out_src_size,      // actually it is a wire
+    output reg [DST_ADDR_WIDTH-1:0] out_des_addr,      // actually it is a wire
+    output reg [DST_SIZE_WIDTH-1:0] out_des_size,      // actually it is a wire
     output reg [STATUS_WIDTH-1:0]   out_status  ,      // actually it is a wire
     output reg [PROFILE_WIDTH-1:0]  out_profile      // actually it is a wire
 );
@@ -33,6 +39,8 @@ module SlotArr #(
 
     wire [DST_ADDR_WIDTH-1:0] out_src_addr_pool    [0: (1 << INDEX_WIDTH)];
     wire [DST_SIZE_WIDTH-1:0] out_src_size_pool    [0: (1 << INDEX_WIDTH)];
+    wire [DST_ADDR_WIDTH-1:0] out_des_addr_pool    [0: (1 << INDEX_WIDTH)];
+    wire [DST_SIZE_WIDTH-1:0] out_des_size_pool    [0: (1 << INDEX_WIDTH)];
     wire [STATUS_WIDTH-1:0]   out_status_pool      [0: (1 << INDEX_WIDTH)];
     wire [PROFILE_WIDTH-1:0]  out_profile_pool     [0: (1 << INDEX_WIDTH)];
 
@@ -58,14 +66,20 @@ module SlotArr #(
                 .inputIdx      (inp_index),
                 .inp_src_addr  (inp_src_addr),
                 .inp_src_size  (inp_src_size),
+                .inp_des_addr  (inp_des_addr),
+                .inp_des_size  (inp_des_size),
                 .inp_status    (inp_status),
                 .inp_profile   (inp_profile),
                 .set_src_addr  (set_src_addr),
                 .set_src_size  (set_src_size),
+                .set_des_addr  (set_des_addr),
+                .set_des_size  (set_des_size),
                 .set_status    (set_status),
                 .set_profile   (set_profile),
                 .out_src_addr  (out_src_addr_pool[i]),
                 .out_src_size  (out_src_size_pool[i]),
+                .out_des_addr  (out_des_addr_pool[i]),
+                .out_des_size  (out_des_size_pool[i]),
                 .out_status    (out_status_pool  [i]),
                 .out_profile   (out_profile_pool [i])
             );
@@ -84,6 +98,8 @@ always @(*) begin
                 // If the index matches, assign the output from the corresponding slot
                 out_src_addr = out_src_addr_pool[muxIdx];
                 out_src_size = out_src_size_pool[muxIdx];
+                out_des_addr = out_des_addr_pool[muxIdx];
+                out_des_size = out_des_size_pool[muxIdx];
                 out_status   = out_status_pool[muxIdx];
                 out_profile  = out_profile_pool[muxIdx];
             end
@@ -100,7 +116,6 @@ endmodule
 
 
 
-// Definition for the Slot module
 module Slot #(
     parameter SRC_ADDR_WIDTH = 32,
     parameter SRC_SIZE_WIDTH = 26,
@@ -118,17 +133,24 @@ module Slot #(
     // set Input ports
     input wire [SRC_ADDR_WIDTH-1:0] inp_src_addr,
     input wire [SRC_SIZE_WIDTH-1:0] inp_src_size,
+    input wire [DST_ADDR_WIDTH-1:0] inp_des_addr,
+    input wire [DST_SIZE_WIDTH-1:0] inp_des_size,
     input wire [STATUS_WIDTH-1:0]   inp_status,
     input wire [PROFILE_WIDTH-1:0]  inp_profile,
     // set trigger ports
     input wire                      set_src_addr,
     input wire                      set_src_size,
+    input wire                      set_des_addr,
+    input wire                      set_des_size,
     input wire                      set_status,
     input wire                      set_profile,
     // dest output ports
-    output reg [DST_ADDR_WIDTH-1:0] out_src_addr,
-    output reg [DST_SIZE_WIDTH-1:0] out_src_size,
-    output reg [STATUS_WIDTH-1:0]   out_status,
-    output reg [PROFILE_WIDTH-1:0]  out_profile
+    output reg [SRC_ADDR_WIDTH-1:0] out_src_addr,
+    output reg [SRC_SIZE_WIDTH-1:0] out_src_size,
+    output reg [DST_ADDR_WIDTH-1:0] out_des_addr,
+    output reg [DST_SIZE_WIDTH-1:0] out_des_size,
+    output reg [STATUS_WIDTH  -1:0] out_status,
+    output reg [PROFILE_WIDTH -1:0] out_profile
 );
+
 endmodule
