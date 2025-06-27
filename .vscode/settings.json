@@ -1,0 +1,4 @@
+{
+    "verilog.linting.linter": "verilator",
+    "verilog.linting.verilator.includePath": ["./include", "./src", "./srcHdl"]
+}
