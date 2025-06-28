@@ -1,0 +1,169 @@
+module s_axi_write #(
+    parameter ADDR_WIDTH = 16, // Address width for AXI interface
+    parameter DATA_WIDTH = 32, // Data width for AXI interface
+    
+    parameter BANK1_INDEX_WIDTH    =  2, // 2 ^ 2 = 4 slots
+    parameter BANK1_SRC_ADDR_WIDTH = 32,
+    parameter BANK1_SRC_SIZE_WIDTH = 26,
+    parameter BANK1_DST_ADDR_WIDTH = 32,
+    parameter BANK1_DST_SIZE_WIDTH = 26,
+    parameter BANK1_STATUS_WIDTH   =  2,
+    parameter BANK1_PROFILE_WIDTH  = 32,
+
+    parameter BANK0_CONTROL_WIDTH = 4,
+    parameter BANK0_STATUS_WIDTH  = 4,
+    parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH /// the counter for the sequencer
+)(
+    input  wire                   clk,
+    input  wire                   reset,
+
+    // AXI Lite Write Address Channel
+    input  wire [ADDR_WIDTH-1:0]  S_AXI_AWADDR,
+    input  wire                   S_AXI_AWVALID,
+    output wire                   S_AXI_AWREADY,
+
+    // AXI Lite Write Data Channel
+    input  wire [DATA_WIDTH-1:0]  S_AXI_WDATA,
+    input  wire [(DATA_WIDTH/8)-1:0] S_AXI_WSTRB,
+    input  wire                   S_AXI_WVALID,
+    output wire                   S_AXI_WREADY,
+
+    // AXI Lite Write Response Channel
+    output wire [1:0]             S_AXI_BRESP,
+    output wire                   S_AXI_BVALID,
+    input  wire                   S_AXI_BREADY,
+
+    //// bank1 interconnect
+    output wire [BANK1_INDEX_WIDTH    -1:0] ext_bank1_inp_index,       // actually it is a wire
+    output wire [BANK1_SRC_ADDR_WIDTH -1:0] ext_bank1_inp_src_addr,    // actually it is a wire
+    output wire [BANK1_SRC_SIZE_WIDTH -1:0] ext_bank1_inp_src_size,    // actually it is a wire
+    output wire [BANK1_DST_ADDR_WIDTH -1:0] ext_bank1_inp_des_addr,    // actually it is a wire
+    output wire [BANK1_DST_SIZE_WIDTH -1:0] ext_bank1_inp_des_size,    // actually it is a wire
+    output wire [BANK1_STATUS_WIDTH   -1:0] ext_bank1_inp_status,      // actually it is a wire
+    output wire [BANK1_PROFILE_WIDTH  -1:0] ext_bank1_inp_profile,     // actually it is a wire
+
+    output reg ext_bank1_set_src_addr,       // actually it is wire
+    output reg ext_bank1_set_src_size,       // actually it is wire
+    output reg ext_bank1_set_des_addr,       // actually it is wire
+    output reg ext_bank1_set_des_size,       // actually it is wire
+    output reg ext_bank1_set_status,       // actually it is wire
+    output reg ext_bank1_set_profile,       // actually it is wire
+
+    output wire [BANK0_CONTROL_WIDTH-1:0] ext_bank0_inp_control, /// set control data
+    output reg                           ext_bank0_set_control, /// set control signal
+    output wire [BANK0_CNT_WIDTH-1:0]     ext_bank0_inp_endCnt,      ///
+    output reg                           ext_bank0_set_endCnt      ///
+);
+
+
+localparam ST_IDLE = 3'b000;
+localparam ST_DATA = 3'b001;
+localparam ST_RESP = 3'b010;
+
+reg [2:0] state;
+reg [ADDR_WIDTH-1:0] write_addr;
+
+////////// main control state machine
+
+always @(posedge clk ) begin
+
+    if (reset) begin
+        state <= ST_IDLE;
+        write_addr <= 0;
+    end else begin
+        case (state)
+            ST_IDLE: begin
+                if (S_AXI_AWVALID) begin
+                    write_addr <= S_AXI_AWADDR;
+                    state <= ST_DATA;
+                end
+            end
+
+            ST_DATA: begin
+                if (S_AXI_WVALID) begin
+                    // Here you would typically write the data to the appropriate register or memory location
+                    // For this example, we just move to the response state
+                    state <= ST_RESP;
+                end
+            end
+
+            ST_RESP: begin
+                if (S_AXI_BREADY) begin
+                    state <= ST_IDLE; // Go back to idle after response is acknowledged
+                end
+            end
+
+            default: state <= ST_IDLE; // Default case to avoid latches
+
+        endcase
+    end
+    
+end
+
+assign S_AXI_AWREADY = (state == ST_IDLE) && S_AXI_AWVALID;
+assign S_AXI_WREADY  = (state == ST_DATA) && S_AXI_WVALID;
+assign S_AXI_BRESP   = 2'b00; // OKAY response
+assign S_AXI_BVALID  = (state == ST_RESP);
+
+/////////// writing to bank1 wiring
+
+/////////// bank1 data wiring 
+
+assign ext_bank1_inp_index           = write_addr[BANK1_INDEX_WIDTH + 6 - 1: 6]; /// the row in slot table
+assign ext_bank1_inp_src_addr        = S_AXI_WDATA[BANK1_SRC_ADDR_WIDTH-1  : 0];
+assign ext_bank1_inp_src_size        = S_AXI_WDATA[BANK1_SRC_SIZE_WIDTH-1  : 0];
+assign ext_bank1_inp_des_addr        = S_AXI_WDATA[BANK1_DST_ADDR_WIDTH-1  : 0];
+assign ext_bank1_inp_des_size        = S_AXI_WDATA[BANK1_DST_SIZE_WIDTH-1  : 0];
+assign ext_bank1_inp_status          = S_AXI_WDATA[BANK1_STATUS_WIDTH  -1  : 0];
+assign ext_bank1_inp_profile         = S_AXI_WDATA[BANK1_PROFILE_WIDTH -1  : 0];
+
+//////////// bank0 data wiring
+
+assign ext_bank0_inp_control        = S_AXI_WDATA[BANK0_CONTROL_WIDTH-1:0]; /// set control data
+assign ext_bank0_inp_endCnt         = S_AXI_WDATA[BANK0_CNT_WIDTH    -1:0]; /// set end count
+
+/////////// block control write signals
+
+always @(*) begin
+    ext_bank1_set_src_addr  = 0; // Default value
+    ext_bank1_set_src_size  = 0; // Default value
+    ext_bank1_set_des_addr  = 0; // Default value
+    ext_bank1_set_des_size  = 0; // Default value
+    ext_bank1_set_status    = 0; // Default value
+    ext_bank1_set_profile   = 0; // Default value
+
+    ext_bank0_set_control   = 0; // Default value
+    ext_bank0_set_endCnt    = 0; // Default value
+
+    if (state == ST_DATA) begin
+        case (write_addr[15:14])
+            2'b00: begin
+                case (write_addr[13:6]) // Address bits 13 to 6 determine the slot
+                    8'h00: begin ext_bank0_set_control = S_AXI_WSTRB[0]; end
+                    8'h03: begin ext_bank0_set_endCnt  = S_AXI_WSTRB[1]; end
+                    default: begin end
+                endcase
+            end
+
+            2'b01: begin
+
+                case (write_addr[5:2]) // Address bits 5 to 2 determine the slot
+                    4'b0000: begin ext_bank1_set_src_addr  = S_AXI_WSTRB[0]; end // set source address
+                    4'b0001: begin ext_bank1_set_src_size  = S_AXI_WSTRB[1]; end // set source size
+                    4'b0010: begin ext_bank1_set_des_addr  = S_AXI_WSTRB[2]; end // set destination address
+                    4'b0011: begin ext_bank1_set_des_size  = S_AXI_WSTRB[3]; end // set destination size
+                    4'b0100: begin ext_bank1_set_status    = S_AXI_WSTRB[4]; end // set status
+                    4'b0101: begin ext_bank1_set_profile   = S_AXI_WSTRB[5]; end // set profile
+                    default: begin end // Default case for unsupported addresses
+                endcase
+            end
+
+            default: begin end
+        endcase
+    end
+
+end
+
+
+
+endmodule

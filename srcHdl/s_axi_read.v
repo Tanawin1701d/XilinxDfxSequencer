@@ -1,7 +1,7 @@
 
 
 
-module moduleName #(
+module s_axi_read #(
     parameter ADDR_WIDTH = 16, // Address width for AXI interface
     parameter DATA_WIDTH = 32, // Data width for AXI interface
     parameter BANK1_INDEX_WIDTH    =  2, // 2 ^ 2 = 4 slots
@@ -33,7 +33,7 @@ module moduleName #(
 
     ////// bank1 interconnect
     output  wire [BANK1_INDEX_WIDTH    -1:0] ext_bank1_out_index,
-    output  reg                             ext_bank1_out_req,           // actually it is a wire
+    output  reg                              ext_bank1_out_req,           // actually it is a wire
     input   wire [BANK1_DST_ADDR_WIDTH -1:0] ext_bank1_out_src_addr,      // actually it is a wire
     input   wire [BANK1_DST_SIZE_WIDTH -1:0] ext_bank1_out_src_size,      // actually it is a wire
     input   wire [BANK1_DST_ADDR_WIDTH -1:0] ext_bank1_out_des_addr,
@@ -43,19 +43,19 @@ module moduleName #(
     input   wire                             ext_bank1_out_ready,         // actually it is a wire
 
     ////// bank0 interconnect
-    output wire [BANK0_STATUS_WIDTH-1:0] ext_bank0_out_status,  /// read only and it is reg
-    output wire [BANK0_CNT_WIDTH   -1:0] ext_bank0_out_mainCnt,     /// read only
-    output wire [BANK0_CNT_WIDTH-1:0]    ext_bank0_out_endCnt      /// read only
+    input wire [BANK0_STATUS_WIDTH-1:0] ext_bank0_out_status,  /// read only and it is reg
+    input wire [BANK0_CNT_WIDTH   -1:0] ext_bank0_out_mainCnt,     /// read only
+    input wire [BANK0_CNT_WIDTH-1:0]    ext_bank0_out_endCnt      /// read only
 
 
 
 );
 
-localparam ST_IDLE =     3'b000;
+localparam ST_IDLE     = 3'b000;
 localparam ST_READDATA = 3'b010;
 
 
-reg[2:0] state; // State variable for FSM
+reg[2:0]            state; // State variable for FSM
 reg[ADDR_WIDTH-1:0] read_addr; // Register to hold the read address
 
 
@@ -92,16 +92,17 @@ assign S_AXI_ARREADY = (state == ST_IDLE) && S_AXI_ARVALID; // Ready to accept r
 assign S_AXI_RRESP   = 2'b00;
 assign S_AXI_RVALID  = (state == ST_READDATA);
 
-assign ext_bank1_out_index = S_AXI_ARADDR[BANK1_INDEX_WIDTH+6-1:6]; // Extracting index from address bits 5 and 4
+assign ext_bank1_out_index = read_addr[BANK1_INDEX_WIDTH+6-1:6]; // Extracting index from address bits 5 and 4
 
 always @(*) begin
 
     ext_bank1_out_req = 0; // Default value
+    S_AXI_RDATA       = 0; // Default case for unsupported addresses
 
     if (state == ST_READDATA)begin
-        if (S_AXI_ARADDR[15:14] == 2'b00) begin
+        if (read_addr[15:14] == 2'b00) begin
 
-            case (S_AXI_ARADDR[13:6]) // Address bits 13 to 6 determine the slot
+            case (read_addr[13:6]) // Address bits 13 to 6 determine the slot
                 8'h00:   begin S_AXI_RDATA = 0;                             end
                 8'h01:   begin S_AXI_RDATA = {28'b0, ext_bank0_out_status}; end // read status register
                 8'h02:   begin S_AXI_RDATA = {30'b0, ext_bank0_out_mainCnt};end// read main counter register
@@ -109,10 +110,10 @@ always @(*) begin
                 default: begin S_AXI_RDATA = 0;                             end// Default case for unsupported addresses
             endcase
 
-        end else if (S_AXI_ARADDR[15:14] == 2'b00) begin
+        end else if (read_addr[15:14] == 2'b01) begin
 
             ext_bank1_out_req = 1; // Set request signal for bank1
-            case (S_AXI_ARADDR[5: 2])
+            case (read_addr[5: 2])
                 4'b0000: begin S_AXI_RDATA = ext_bank1_out_src_addr;         end // read index register
                 4'b0001: begin S_AXI_RDATA = {6'b0, ext_bank1_out_src_size}; end // read source address
                 4'b0010: begin S_AXI_RDATA = ext_bank1_out_des_addr;         end // read source size
@@ -123,18 +124,10 @@ always @(*) begin
 
             endcase
 
-        end else begin
-            S_AXI_RDATA = 0; // Default case for unsupported addresses
         end
-
-    end else begin
-        S_AXI_RDATA = 0; // Default case when not in read data state
     end
-
 end
 
-
-    
 endmodule
 
 
