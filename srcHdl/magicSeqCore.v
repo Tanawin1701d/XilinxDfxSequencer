@@ -1,5 +1,8 @@
 module MagicSeqCore #(
 
+    parameter GLOB_ADDR_WIDTH = 32, // Address width for AXI interface
+    parameter GLOB_DATA_WIDTH = 32, // Data width for AXI interface
+
     parameter BANK1_INDEX_WIDTH    =  2, // 2 ^ 2 = 4 slots
     parameter BANK1_SRC_ADDR_WIDTH = 32,
     parameter BANK1_SRC_SIZE_WIDTH = 26,
@@ -10,9 +13,10 @@ module MagicSeqCore #(
 
     parameter BANK0_CONTROL_WIDTH = 4,
     parameter BANK0_STATUS_WIDTH  = 4,
-    parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH /// the counter for the sequencer
+    parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH, /// the counter for the sequencer
 
-
+    parameter DMA_INIT_TASK_CNT   = 4, //// (baseAddr0 + size0) + (baseAddr1 + size1)
+    parameter DMA_EXEC_TASK_CNT   = 1
 ) (
     input wire clk,
     input wire reset,
@@ -69,17 +73,33 @@ module MagicSeqCore #(
     input  wire                          ext_bank0_set_endCnt,      ///
     output wire [BANK0_CNT_WIDTH-1:0]    ext_bank0_out_endCnt,      /// read only
 
+    input  wire [GLOB_ADDR_WIDTH-1: 0]   ext_bank0_inp_dmaBaseAddr,
+    input  wire                          ext_bank0_set_dmaBaseAddr,
+    output wire [GLOB_ADDR_WIDTH-1: 0]   ext_bank0_out_dmaBaseAddr,
+
+    input  wire [GLOB_ADDR_WIDTH-1: 0]   ext_bank0_inp_dfxCtrlAddr,
+    input  wire                          ext_bank0_set_dfxCtrlAddr,
+    output wire [GLOB_ADDR_WIDTH-1: 0]   ext_bank0_out_dfxCtrlAddr,
+
+
     //////////////////////////////////////////////////////////
     // slave functionality                         ///////////
     //////////////////////////////////////////////////////////
+
+
+    ///// 
+    ///// this will trigger the dfx Controller usally hardware trigger
+    /////
     output wire slaveReprog, ///// trigger slave dma to reprogram
     input  wire slaveReprogAccept, ///// the slave dma is ready to reprogram
+    ///// 
+    ///// this will trigger the dma Controller
+    /////
+    output wire slaveInit   [DMA_INIT_TASK_CNT-1: 0], ///// trigger slave dma to do somthing
+    input  wire slaveFinInit[DMA_INIT_TASK_CNT-1: 0],
 
-    output wire slaveInit, ///// trigger slave dma to do somthing
-    input  wire slaveFinInit,
-
-    output wire slaveStartExec,
-    input  wire slaveStartExecAccept, ///// the slave dma is ready to start
+    output wire slaveStartExec      [DMA_EXEC_TASK_CNT-1: 0],
+    input  wire slaveStartExecAccept[DMA_EXEC_TASK_CNT-1: 0], ///// the slave dma is ready to start
 
     input wire  slaveFinExec, ///// the slave dma is finished, so we can go to triggering next
 
@@ -109,6 +129,14 @@ localparam CTRL_START            = 4'b0010;
 reg [BANK0_STATUS_WIDTH-1:0]    mainStatus;
 reg [BANK0_CNT_WIDTH   -1:0]    mainCnt;
 reg [BANK0_CNT_WIDTH   -1:0]    endCnt;
+
+reg [GLOB_ADDR_WIDTH   -1:0]    dmaBaseAddr;
+reg [GLOB_ADDR_WIDTH   -1:0]    dfxCtrlAddr;
+
+reg [DMA_INIT_TASK_CNT -1:0]    dmaInitTask;
+
+reg [DMA_EXEC_TASK_CNT -1:0]    dmaExecTask;
+
 /////////////////////////////////////////////////
 ////// BANK 1 slot table wire declaration ///////
 /////////////////////////////////////////////////
@@ -161,8 +189,8 @@ assign ext_bank0_out_mainCnt = mainCnt;
 //////////// end counter setting///
 ///////////////////////////////////
 assign ext_bank0_out_endCnt = endCnt;
-always @(posedge clk) begin
-    if (reset) begin
+always @(posedge clk or negedge reset) begin
+    if (~reset) begin
         endCnt  <= 0;
     end else if (mainStatus == STATUS_SHUTDOWN) begin
         // if the system is in shutdown state, we can set the endCnt
@@ -172,6 +200,44 @@ always @(posedge clk) begin
     end
     // otherwise, we do not allow to set the endCnt register
 end
+
+///////////////////////////////////
+//////////// dma address setting///
+///////////////////////////////////
+assign ext_bank0_out_dmaBaseAddr = dmaBaseAddr;
+always @(posedge clk or negedge reset)begin
+    if (~reset) begin
+        dmaBaseAddr <= 0;
+    end else if (mainStatus == STATUS_SHUTDOWN) begin
+        if (ext_bank0_set_dmaBaseAddr) begin
+            dmaBaseAddr <= ext_bank0_inp_dmaBaseAddr;
+        end
+    end
+
+end
+///////////////////////////////////
+//////////// dma address setting///
+///////////////////////////////////
+assign ext_bank0_out_dfxCtrlAddr = dfxCtrlAddr;
+always @(posedge clk or negedge reset)begin
+    if (~reset) begin
+        dfxCtrlAddr <= 0;
+    end else if (mainStatus == STATUS_SHUTDOWN) begin
+        if (ext_bank0_set_dfxCtrlAddr) begin
+            dfxCtrlAddr <= ext_bank0_inp_dfxCtrlAddr;
+        end
+    end
+end
+
+///////////////////////////////////////
+//////////// dma  setting //////
+///////////////////////////////////////
+// dmaInitTask
+// dmaExecTask
+assign slaveInit      [DMA_INIT_TASK_CNT-1: 0] = dmaInitTask[DMA_INIT_TASK_CNT-1: 0];
+assign slaveStartExec [DMA_EXEC_TASK_CNT-1: 0] = dmaExecTask[DMA_EXEC_TASK_CNT-1: 0];
+
+
 
 ///////////////////////////////////
 //////////// bank1 slot         ///
@@ -236,12 +302,13 @@ always @(posedge clk or negedge reset ) begin
     if (~reset) begin
         mainStatus <= STATUS_SHUTDOWN;
         mainCnt    <= 0;
-        endCnt     <= 0;
     end else if (ext_bank0_set_control) begin
         case (ext_bank0_inp_control)
             CTRL_CLEAR: begin
                 mainStatus <= STATUS_SHUTDOWN;
                 mainCnt    <= 0;
+                dmaInitTask <= 0;
+                dmaExecTask <= 0;
             end
             CTRL_SHUTDOWN: begin
                 mainStatus <= STATUS_SHUTDOWN;
@@ -267,19 +334,27 @@ always @(posedge clk or negedge reset ) begin
                 // we can trigger the slave to do something
                 if (slaveReprogAccept) begin
                     mainStatus <= STATUS_INITIALIZING; // go to initializing state
+                    dmaInitTask <= 1; //// intializee the init task 
                 end
             end
             STATUS_INITIALIZING: begin
                 // do nothing, just keep the current status
                 // we can trigger the slave to do something
-                if (slaveFinInit) begin
+                if (slaveFinInit[DMA_INIT_TASK_CNT - 1]) begin
                     mainStatus <= STATUS_TRIGGERING; // go to triggering state
+                    dmaInitTask <= 0; //// clear the sequence tracker
+                    dmaExecTask <= 1; ///// initialize with 
+                end else if (slaveFinInit != 0) begin
+                    dmaInitTask <= dmaInitTask << 1; /// shift to the next task
                 end
             end
             STATUS_TRIGGERING: begin
-                if (slaveStartExecAccept) begin
+                if (slaveStartExecAccept[DMA_EXEC_TASK_CNT-1]) begin
                     // trigger the slave to start executing
                     mainStatus <= STATUS_WAIT4FIN; // go to wait for finish state
+                    dmaExecTask <= 0;
+                end else if (slaveStartExecAccept[DMA_EXEC_TASK_CNT-1] != 0) begin
+                    dmaExecTask <= dmaExecTask << 1;
                 end
             end
             STATUS_WAIT4FIN: begin
@@ -303,9 +378,6 @@ always @(posedge clk or negedge reset ) begin
 end
 
 assign slaveReprog = (mainStatus == STATUS_REPROG);
-assign slaveInit   = (mainStatus == STATUS_INITIALIZING);
-assign slaveStartExec = (mainStatus == STATUS_TRIGGERING);
-
 ///////////////////////////////////////////////
 ///////// BANK1 slot table ///////////////////
 ///////////////////////////////////////////////

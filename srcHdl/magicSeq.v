@@ -1,5 +1,8 @@
 module MagicSeqTop #(
 
+    parameter GLOB_ADDR_WIDTH = 32, // Address width for AXI interface
+    parameter GLOB_DATA_WIDTH = 32, // Data width for AXI interface
+
     parameter ADDR_WIDTH = 16, // Address width for AXI interface
     parameter DATA_WIDTH = 32, // Data width for AXI interface
 
@@ -13,7 +16,10 @@ module MagicSeqTop #(
 
     parameter BANK0_CONTROL_WIDTH = 4,
     parameter BANK0_STATUS_WIDTH  = 4,
-    parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH /// the counter for the sequencer
+    parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH, /// the counter for the sequencer
+
+    parameter DMA_INIT_TASK_CNT   = 4, //// (baseAddr0 + size0) + (baseAddr1 + size1)
+    parameter DMA_EXEC_TASK_CNT   = 1
 
 ) (
 
@@ -54,7 +60,45 @@ output wire                   S_AXI_WREADY,
 // AXI Lite Write Response Channel
 output wire [1:0]             S_AXI_BRESP,
 output wire                   S_AXI_BVALID,
-input  wire                   S_AXI_BREADY
+input  wire                   S_AXI_BREADY,
+
+/**
+ ------------ AXI4-Lite master read Interface 
+it is supposed to connect to the PS
+*/
+// Read Address Channel
+output  wire [GLOB_ADDR_WIDTH-1:0]  M_AXI_ARADDR,
+output  wire                        M_AXI_ARVALID,
+input   wire                        M_AXI_ARREADY,
+
+// Read Data Channel
+input   wire  [GLOB_ADDR_WIDTH-1:0]   M_AXI_RDATA, ////// read data output acctually it is a reg
+input   wire  [1:0]                   M_AXI_RRESP,
+input   wire                          M_AXI_RVALID,
+output  wire                          M_AXI_RREADY,
+
+/**
+ ------------ AXI4-Lite master write Interface 
+it is supposed to connect to the PS
+*/
+
+output  wire [GLOB_ADDR_WIDTH-1:0]    M_AXI_AWADDR, ///// actually it is wire
+output  wire                          M_AXI_AWVALID,
+input   wire                          M_AXI_AWREADY,
+
+    // AXI Lite Write Data Channel
+output  wire[GLOB_DATA_WIDTH-1:0]     M_AXI_WDATA, ///// actually it is wire
+output  wire[(GLOB_DATA_WIDTH/8)-1:0] M_AXI_WSTRB,
+output  wire                          M_AXI_WVALID,
+input   wire                          M_AXI_WREADY,
+
+    // AXI Lite Write Response Channel
+input  wire [1:0]                     M_AXI_BRESP,
+input  wire                           M_AXI_BVALID,
+output wire                           M_AXI_BREADY,
+
+input  wire                           slaveFinExec
+
 
 );
 
@@ -123,13 +167,14 @@ input  wire                   S_AXI_BREADY
     wire slaveReprog; ///// trigger slave dma to reprogram
     wire slaveReprogAccept; ///// the slave dma is ready to reprogram
 
-    wire slaveInit; ///// trigger slave dma to do somthing
-    wire slaveFinInit;
+    wire slaveInit   [DMA_INIT_TASK_CNT-1: 0]; ///// trigger slave dma to do somthing
+    wire slaveFinInit[DMA_INIT_TASK_CNT-1: 0];
 
-    wire slaveStartExec;
-    wire slaveStartExecAccept; ///// the slave dma is ready to start
+    wire slaveStartExec      [DMA_EXEC_TASK_CNT-1: 0];
+    wire slaveStartExecAccept[DMA_EXEC_TASK_CNT-1: 0]; ///// the slave dma is ready to start
 
-    wire  slaveFinExec; ///// the slave dma is finished, so we can go to triggering next
+    /// wire  slaveFinExec; ///// the slave dma is finished, so we can go to triggering next
+    //////////// we route it as input
 
     wire [BANK1_DST_ADDR_WIDTH -1:0] slave_bank1_out_src_addr;      // actually it is a reg
     wire [BANK1_DST_SIZE_WIDTH -1:0] slave_bank1_out_src_size;      // actually it is a reg
@@ -141,8 +186,6 @@ input  wire                   S_AXI_BREADY
 
     ////// for now we dummy assign the dma connection signal to prevent errror
     assign slaveReprogAccept = 1;
-    assign slaveFinInit = 1;
-    assign slaveStartExecAccept = 1;
 
 
 ///////////////////////////////////////////////////////////////
@@ -196,9 +239,9 @@ s_axi_read #(
     .ext_bank0_out_endCnt(ext_bank0_out_endCnt)     /// read only
 );
 
-///////////////////////////////////////////////////////////////
-///////// create axi interface for write channel ///////////////
-///////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+///////// create axi slave interface for write channel ///////////////
+//////////////////////////////////////////////////////////////////////
 
 s_axi_write #(
     .ADDR_WIDTH(ADDR_WIDTH),
@@ -258,12 +301,104 @@ s_axi_write #(
 );
 
 
-///////////////////////////////////////////////////////////////
-///////// create axi interface for write channel ///////////////
-///////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+///////// create axi master interface for read channel //////////////
+//////////////////////////////////////////////////////////////////////
 
+
+m_axi_read #(
+    .GLOB_ADDR_WIDTH(GLOB_ADDR_WIDTH),
+    .GLOB_DATA_WIDTH(GLOB_DATA_WIDTH),
+    .BANK1_INDEX_WIDTH(BANK1_INDEX_WIDTH),
+    .BANK1_SRC_ADDR_WIDTH(BANK1_SRC_ADDR_WIDTH),
+    .BANK1_SRC_SIZE_WIDTH(BANK1_SRC_SIZE_WIDTH),
+    .BANK1_DST_ADDR_WIDTH(BANK1_DST_ADDR_WIDTH),
+    .BANK1_DST_SIZE_WIDTH(BANK1_DST_SIZE_WIDTH),
+    .BANK1_STATUS_WIDTH(BANK1_STATUS_WIDTH),
+    .BANK1_PROFILE_WIDTH(BANK1_PROFILE_WIDTH),
+    .BANK0_CONTROL_WIDTH(BANK0_CONTROL_WIDTH),
+    .BANK0_STATUS_WIDTH(BANK0_STATUS_WIDTH),
+    .BANK0_CNT_WIDTH(BANK0_CNT_WIDTH),
+    .DMA_INIT_TASK_CNT(DMA_INIT_TASK_CNT),
+    .DMA_EXEC_TASK_CNT(DMA_EXEC_TASK_CNT)
+
+) axiCmdRead(
+    .clk(clk),
+    .reset(reset),
+    .M_AXI_ARADDR(M_AXI_ARADDR),
+    .M_AXI_ARVALID(M_AXI_ARVALID),
+    .M_AXI_ARREADY(M_AXI_ARREADY),
+    .M_AXI_RDATA(M_AXI_RDATA),
+    .M_AXI_RRESP(M_AXI_RRESP),
+    .M_AXI_RVALID(M_AXI_RVALID),
+    .M_AXI_RREADY(M_AXI_RREADY)
+);
+
+
+//////////////////////////////////////////////////////////////////////
+///////// create axi master interface for write channel //////////////
+//////////////////////////////////////////////////////////////////////
+
+m_axi_write #(
+        .GLOB_ADDR_WIDTH(GLOB_ADDR_WIDTH),
+    .GLOB_DATA_WIDTH(GLOB_DATA_WIDTH),
+    .BANK1_INDEX_WIDTH(BANK1_INDEX_WIDTH),
+    .BANK1_SRC_ADDR_WIDTH(BANK1_SRC_ADDR_WIDTH),
+    .BANK1_SRC_SIZE_WIDTH(BANK1_SRC_SIZE_WIDTH),
+    .BANK1_DST_ADDR_WIDTH(BANK1_DST_ADDR_WIDTH),
+    .BANK1_DST_SIZE_WIDTH(BANK1_DST_SIZE_WIDTH),
+    .BANK1_STATUS_WIDTH(BANK1_STATUS_WIDTH),
+    .BANK1_PROFILE_WIDTH(BANK1_PROFILE_WIDTH),
+    .BANK0_CONTROL_WIDTH(BANK0_CONTROL_WIDTH),
+    .BANK0_STATUS_WIDTH(BANK0_STATUS_WIDTH),
+    .BANK0_CNT_WIDTH(BANK0_CNT_WIDTH),
+    .DMA_INIT_TASK_CNT(DMA_INIT_TASK_CNT),
+    .DMA_EXEC_TASK_CNT(DMA_EXEC_TASK_CNT)
+) axiCmdWrite (
+
+    .clk(clk),
+    .reset(reset),
+
+    .M_AXI_AWADDR(M_AXI_AWADDR),
+    .M_AXI_AWVALID(M_AXI_AWVALID),
+    .M_AXI_AWREADY(M_AXI_AWREADY),
+
+    .M_AXI_WDATA(M_AXI_WDATA),
+    .M_AXI_WSTRB(M_AXI_WSTRB),
+    .M_AXI_WVALID(M_AXI_WVALID),
+    .M_AXI_WREADY(M_AXI_WREADY),
+
+    .M_AXI_BRESP(M_AXI_BRESP),
+    .M_AXI_BVALID(M_AXI_BVALID),
+    .M_AXI_BREADY(M_AXI_BREADY),
+
+    .ext_bank0_out_dmaBaseAddr(ext_bank0_out_dmaBaseAddr),
+
+
+    .slaveInit(slaveInit),
+    .slaveFinInit(slaveFinInit),
+
+    .slaveStartExec(slaveStartExec),
+    .slaveStartExecAccept(slaveStartExecAccept),
+
+    .slave_bank1_out_src_addr(slave_bank1_out_src_addr),
+    .slave_bank1_out_src_size(slave_bank1_out_src_size),
+    .slave_bank1_out_des_addr(slave_bank1_out_des_addr),
+    .slave_bank1_out_des_size(slave_bank1_out_des_size),
+    .slave_bank1_out_status(slave_bank1_out_status),
+    .slave_bank1_out_profile(slave_bank1_out_profile)
+
+)
+
+
+
+//////////////////////////////////////////////////////////////////////
+////////////// connect to main core //////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 
 MagicSeqCore #(
+    .GLOB_ADDR_WIDTH(GLOB_ADDR_WIDTH),
+    .GLOB_DATA_WIDTH(GLOB_DATA_WIDTH),
     .BANK1_INDEX_WIDTH(BANK1_INDEX_WIDTH),
     .BANK1_SRC_ADDR_WIDTH(BANK1_SRC_ADDR_WIDTH),
     .BANK1_SRC_SIZE_WIDTH(BANK1_SRC_SIZE_WIDTH),
@@ -274,7 +409,9 @@ MagicSeqCore #(
 
     .BANK0_CONTROL_WIDTH(BANK0_CONTROL_WIDTH),
     .BANK0_STATUS_WIDTH(BANK0_STATUS_WIDTH),
-    .BANK0_CNT_WIDTH(BANK0_CNT_WIDTH)
+    .BANK0_CNT_WIDTH(BANK0_CNT_WIDTH),
+    .DMA_INIT_TASK_CNT(DMA_INIT_TASK_CNT),
+    .DMA_EXEC_TASK_CNT(DMA_EXEC_TASK_CNT)
 ) magicSeqCore(
     .clk(clk),
     .reset(reset),
