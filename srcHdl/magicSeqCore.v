@@ -230,10 +230,10 @@ assign bank1_set_fin_profile        = ext_bank1_set_fin_profile | (mainStatus ==
 ///////// CONTROL SYSTEM  /////////////////////
 ///////////////////////////////////////////////
 
-always @(posedge clk ) begin
+always @(posedge clk or negedge reset ) begin
     
     ///// case the system is commanded by the outsider
-    if (reset) begin
+    if (~reset) begin
         mainStatus <= STATUS_SHUTDOWN;
         mainCnt    <= 0;
         endCnt     <= 0;

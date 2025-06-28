@@ -18,7 +18,7 @@ module s_axi_read #(
     parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH /// the counter for the sequencer
 ) (
 
-    input wire clk,
+    input  wire clk,
     input  wire reset,
 
     // Read Address Channel
@@ -61,8 +61,8 @@ reg[ADDR_WIDTH-1:0] read_addr; // Register to hold the read address
 
 
 ///////// main control state machine
-always @(posedge clk ) begin
-    if (reset) begin
+always @(posedge clk or negedge reset ) begin
+    if (~reset) begin
         state <= ST_IDLE;
     end else begin
         case (state)

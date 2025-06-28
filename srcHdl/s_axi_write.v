@@ -65,9 +65,9 @@ reg [ADDR_WIDTH-1:0] write_addr;
 
 ////////// main control state machine
 
-always @(posedge clk ) begin
+always @(posedge clk or negedge reset ) begin
 
-    if (reset) begin
+    if (~reset) begin
         state <= ST_IDLE;
         write_addr <= 0;
     end else begin
