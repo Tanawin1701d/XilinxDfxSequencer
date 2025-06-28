@@ -100,8 +100,8 @@ always @(posedge clk or negedge reset ) begin
     
 end
 
-assign S_AXI_AWREADY = (state == ST_IDLE) && S_AXI_AWVALID;
-assign S_AXI_WREADY  = (state == ST_DATA) && S_AXI_WVALID;
+assign S_AXI_AWREADY = (state == ST_IDLE);
+assign S_AXI_WREADY  = (state == ST_DATA);
 assign S_AXI_BRESP   = 2'b00; // OKAY response
 assign S_AXI_BVALID  = (state == ST_RESP);
 

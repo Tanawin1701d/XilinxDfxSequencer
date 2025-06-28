@@ -347,13 +347,6 @@ SlotArr #(
     .out_profile   (bank1_out_profile)       // actually it is a wire
 );
 
-
-
-
-
-
-
-
 endmodule
 
 
