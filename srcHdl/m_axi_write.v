@@ -97,10 +97,7 @@ always @(posedge clk or negedge reset) begin
                 if (M_AXI_AWREADY) begin state = STATUS_WDATA; end
             end
             STATUS_WDATA: begin
-                if (M_AXI_WREADY) begin 
-                    if (M_AXI_BVALID) begin state = STATUS_UNLOCK; end
-                    else              begin state = STATUS_RESP;   end
-                end
+                if (M_AXI_WREADY) begin state = STATUS_RESP; end
             end
             STATUS_RESP: begin
                 if (M_AXI_BVALID) begin state = STATUS_UNLOCK; end
@@ -159,8 +156,8 @@ always @ (*) begin
                         M_AXI_WDATA  = {{(GLOB_DATA_WIDTH - BANK1_DST_SIZE_WIDTH){1'b0}}, slave_bank1_out_des_size}; 
                     end
             default: begin 
-                        M_AXI_AWADDR = 0;
-                        M_AXI_WDATA  = 0;
+                        M_AXI_AWADDR          = 0;
+                        M_AXI_WDATA           = 0;
                         slaveFinInit          = 0;
                         slaveStartExecAccept  = 0;        
                     end

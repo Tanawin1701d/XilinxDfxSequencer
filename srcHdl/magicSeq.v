@@ -161,6 +161,13 @@ input  wire                           slaveFinExec
     wire                          ext_bank0_set_endCnt;     ///
     wire [BANK0_CNT_WIDTH-1:0]    ext_bank0_out_endCnt;     /// read only
 
+    wire [GLOB_ADDR_WIDTH-1: 0]   ext_bank0_inp_dmaBaseAddr;
+    wire                          ext_bank0_set_dmaBaseAddr;
+    wire [GLOB_ADDR_WIDTH-1: 0]   ext_bank0_out_dmaBaseAddr;
+
+    wire [GLOB_ADDR_WIDTH-1: 0]   ext_bank0_inp_dfxCtrlAddr;
+    wire                          ext_bank0_set_dfxCtrlAddr;
+    wire [GLOB_ADDR_WIDTH-1: 0]   ext_bank0_out_dfxCtrlAddr;
     //////////////////////////////////////////////////////////
     // slave functionality                         ///////////
     //////////////////////////////////////////////////////////
@@ -193,6 +200,8 @@ input  wire                           slaveFinExec
 ///////////////////////////////////////////////////////////////
 
 s_axi_read #(
+    .GLOB_ADDR_WIDTH(GLOB_ADDR_WIDTH),
+    .GLOB_DATA_WIDTH(GLOB_DATA_WIDTH),
     .ADDR_WIDTH(ADDR_WIDTH),
     .DATA_WIDTH(DATA_WIDTH),
 
@@ -236,7 +245,10 @@ s_axi_read #(
     ////// bank0 interconnect
     .ext_bank0_out_status(ext_bank0_out_status),  /// read only and it is reg
     .ext_bank0_out_mainCnt(ext_bank0_out_mainCnt),     /// read only
-    .ext_bank0_out_endCnt(ext_bank0_out_endCnt)     /// read only
+    .ext_bank0_out_endCnt(ext_bank0_out_endCnt),     /// read only
+    .ext_bank0_out_dmaBaseAddr(ext_bank0_out_dmaBaseAddr),
+    .ext_bank0_out_dfxCtrlAddr(ext_bank0_out_dfxCtrlAddr)
+
 );
 
 //////////////////////////////////////////////////////////////////////
@@ -244,6 +256,8 @@ s_axi_read #(
 //////////////////////////////////////////////////////////////////////
 
 s_axi_write #(
+    .GLOB_ADDR_WIDTH(GLOB_ADDR_WIDTH),
+    .GLOB_DATA_WIDTH(GLOB_DATA_WIDTH),
     .ADDR_WIDTH(ADDR_WIDTH),
     .DATA_WIDTH(DATA_WIDTH),
 
@@ -297,7 +311,11 @@ s_axi_write #(
     .ext_bank0_inp_control(ext_bank0_inp_control),
     .ext_bank0_set_control(ext_bank0_set_control),
     .ext_bank0_inp_endCnt(ext_bank0_inp_endCnt),
-    .ext_bank0_set_endCnt(ext_bank0_set_endCnt)
+    .ext_bank0_set_endCnt(ext_bank0_set_endCnt),
+    .ext_bank0_inp_dmaBaseAddr(ext_bank0_inp_dmaBaseAddr),
+    .ext_bank0_set_dmaBaseAddr(ext_bank0_set_dmaBaseAddr),
+    .ext_bank0_inp_dfxCtrlAddr(ext_bank0_inp_dfxCtrlAddr),
+    .ext_bank0_set_dfxCtrlAddr(ext_bank0_set_dfxCtrlAddr)
 );
 
 
@@ -461,6 +479,15 @@ MagicSeqCore #(
     .ext_bank0_inp_endCnt(ext_bank0_inp_endCnt),
     .ext_bank0_set_endCnt(ext_bank0_set_endCnt),
     .ext_bank0_out_endCnt(ext_bank0_out_endCnt),
+
+    .ext_bank0_inp_dmaBaseAddr(ext_bank0_inp_dmaBaseAddr),
+    .ext_bank0_set_dmaBaseAddr(ext_bank0_set_dmaBaseAddr),
+    .ext_bank0_out_dmaBaseAddr(ext_bank0_out_dmaBaseAddr),
+
+    .ext_bank0_inp_dfxCtrlAddr(ext_bank0_inp_dfxCtrlAddr),
+    .ext_bank0_set_dfxCtrlAddr(ext_bank0_set_dfxCtrlAddr),
+    .ext_bank0_out_dfxCtrlAddr(ext_bank0_out_dfxCtrlAddr),
+
 
     .slaveReprog(slaveReprog), ///// trigger slave dma to reprogram
     .slaveReprogAccept(slaveReprogAccept), ///// the slave dma is ready to reprogram

@@ -1,4 +1,7 @@
 module s_axi_write #(
+    parameter GLOB_ADDR_WIDTH = 32, // Address width for AXI interface
+    parameter GLOB_DATA_WIDTH = 32, // Data width for AXI interface
+
     parameter ADDR_WIDTH = 16, // Address width for AXI interface
     parameter DATA_WIDTH = 32, // Data width for AXI interface
     
@@ -52,7 +55,11 @@ module s_axi_write #(
     output wire [BANK0_CONTROL_WIDTH-1:0] ext_bank0_inp_control, /// set control data
     output reg                            ext_bank0_set_control, /// set control signal
     output wire [BANK0_CNT_WIDTH-1:0]     ext_bank0_inp_endCnt,      ///
-    output reg                            ext_bank0_set_endCnt      ///
+    output reg                            ext_bank0_set_endCnt,      ///
+    output reg  [GLOB_ADDR_WIDTH-1: 0]    ext_bank0_inp_dmaBaseAddr,
+    output wire                           ext_bank0_set_dmaBaseAddr,
+    output reg  [GLOB_ADDR_WIDTH-1: 0]    ext_bank0_inp_dfxCtrlAddr,
+    output wire                           ext_bank0_set_dfxCtrlAddr
 );
 
 
@@ -122,18 +129,25 @@ assign ext_bank1_inp_profile         = S_AXI_WDATA[BANK1_PROFILE_WIDTH -1  : 0];
 assign ext_bank0_inp_control        = S_AXI_WDATA[BANK0_CONTROL_WIDTH-1:0]; /// set control data
 assign ext_bank0_inp_endCnt         = S_AXI_WDATA[BANK0_CNT_WIDTH    -1:0]; /// set end count
 
+assign ext_bank0_inp_dmaBaseAddr    = S_AXI_WDATA[GLOB_ADDR_WIDTH    -1:0]; 
+assign ext_bank0_inp_dfxCtrlAddr    = S_AXI_WDATA[GLOB_ADDR_WIDTH    -1:0];
+
 /////////// block control write signals
 
 always @(*) begin
-    ext_bank1_set_src_addr  = 0; // Default value
-    ext_bank1_set_src_size  = 0; // Default value
-    ext_bank1_set_des_addr  = 0; // Default value
-    ext_bank1_set_des_size  = 0; // Default value
-    ext_bank1_set_status    = 0; // Default value
-    ext_bank1_set_profile   = 0; // Default value
+    ext_bank1_set_src_addr    = 0; // Default value
+    ext_bank1_set_src_size    = 0; // Default value
+    ext_bank1_set_des_addr    = 0; // Default value
+    ext_bank1_set_des_size    = 0; // Default value
+    ext_bank1_set_status      = 0; // Default value
+    ext_bank1_set_profile     = 0; // Default value
+    
 
-    ext_bank0_set_control   = 0; // Default value
-    ext_bank0_set_endCnt    = 0; // Default value
+    ext_bank0_set_control     = 0; // Default value
+    ext_bank0_set_endCnt      = 0; // Default value
+    ext_bank0_set_dmaBaseAddr = 0; // Default value
+    ext_bank0_set_dfxCtrlAddr = 0; // Default value
+    
 
     if (state == ST_DATA) begin
         case (write_addr[15:14])
@@ -141,6 +155,8 @@ always @(*) begin
                 case (write_addr[13:6]) // Address bits 13 to 6 determine the slot
                     8'h00: begin ext_bank0_set_control = 1; end
                     8'h03: begin ext_bank0_set_endCnt  = 1; end
+                    8'h04: begin ext_bank0_set_dmaBaseAddr = 1; end
+                    8'h05: begin ext_bank0_set_dfxCtrlAddr = 1; end
                     default: begin end
                 endcase
             end

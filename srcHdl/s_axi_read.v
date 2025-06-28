@@ -2,6 +2,10 @@
 
 
 module s_axi_read #(
+
+    parameter GLOB_ADDR_WIDTH = 32, // Address width for AXI interface
+    parameter GLOB_DATA_WIDTH = 32, // Data width for AXI interface
+
     parameter ADDR_WIDTH = 16, // Address width for AXI interface
     parameter DATA_WIDTH = 32, // Data width for AXI interface
 
@@ -46,10 +50,9 @@ module s_axi_read #(
     ////// bank0 interconnect
     input wire [BANK0_STATUS_WIDTH-1:0] ext_bank0_out_status,  /// read only and it is reg
     input wire [BANK0_CNT_WIDTH   -1:0] ext_bank0_out_mainCnt,     /// read only
-    input wire [BANK0_CNT_WIDTH-1:0]    ext_bank0_out_endCnt      /// read only
-
-
-
+    input wire [BANK0_CNT_WIDTH   -1:0] ext_bank0_out_endCnt,      /// read only
+    input wire [GLOB_ADDR_WIDTH   -1:0] ext_bank0_out_dmaBaseAddr,
+    input wire [GLOB_ADDR_WIDTH   -1:0] ext_bank0_out_dfxCtrlAddr
 );
 
 localparam ST_IDLE     = 3'b000;
@@ -108,6 +111,8 @@ always @(*) begin
                 8'h01:   begin S_AXI_RDATA = {28'b0, ext_bank0_out_status}; end // read status register
                 8'h02:   begin S_AXI_RDATA = {30'b0, ext_bank0_out_mainCnt};end// read main counter register
                 8'h03:   begin S_AXI_RDATA = {30'b0, ext_bank0_out_endCnt}; end// read end counter register
+                8'h04:   begin S_AXI_RDATA = ext_bank0_out_dmaBaseAddr;     end
+                8'h05:   begin S_AXI_RDATA = ext_bank0_out_dfxCtrlAddr;     end
                 default: begin S_AXI_RDATA = 0;                             end// Default case for unsupported addresses
             endcase
 
