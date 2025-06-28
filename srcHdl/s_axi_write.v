@@ -50,9 +50,9 @@ module s_axi_write #(
     output reg ext_bank1_set_profile,       // actually it is wire
 
     output wire [BANK0_CONTROL_WIDTH-1:0] ext_bank0_inp_control, /// set control data
-    output reg                           ext_bank0_set_control, /// set control signal
+    output reg                            ext_bank0_set_control, /// set control signal
     output wire [BANK0_CNT_WIDTH-1:0]     ext_bank0_inp_endCnt,      ///
-    output reg                           ext_bank0_set_endCnt      ///
+    output reg                            ext_bank0_set_endCnt      ///
 );
 
 
@@ -139,8 +139,8 @@ always @(*) begin
         case (write_addr[15:14])
             2'b00: begin
                 case (write_addr[13:6]) // Address bits 13 to 6 determine the slot
-                    8'h00: begin ext_bank0_set_control = S_AXI_WSTRB[0]; end
-                    8'h03: begin ext_bank0_set_endCnt  = S_AXI_WSTRB[1]; end
+                    8'h00: begin ext_bank0_set_control = 1; end
+                    8'h03: begin ext_bank0_set_endCnt  = 1; end
                     default: begin end
                 endcase
             end
@@ -148,12 +148,12 @@ always @(*) begin
             2'b01: begin
 
                 case (write_addr[5:2]) // Address bits 5 to 2 determine the slot
-                    4'b0000: begin ext_bank1_set_src_addr  = S_AXI_WSTRB[0]; end // set source address
-                    4'b0001: begin ext_bank1_set_src_size  = S_AXI_WSTRB[1]; end // set source size
-                    4'b0010: begin ext_bank1_set_des_addr  = S_AXI_WSTRB[2]; end // set destination address
-                    4'b0011: begin ext_bank1_set_des_size  = S_AXI_WSTRB[3]; end // set destination size
-                    4'b0100: begin ext_bank1_set_status    = S_AXI_WSTRB[4]; end // set status
-                    4'b0101: begin ext_bank1_set_profile   = S_AXI_WSTRB[5]; end // set profile
+                    4'b0000: begin ext_bank1_set_src_addr  = 1; end // set source address
+                    4'b0001: begin ext_bank1_set_src_size  = 1; end // set source size
+                    4'b0010: begin ext_bank1_set_des_addr  = 1; end // set destination address
+                    4'b0011: begin ext_bank1_set_des_size  = 1; end // set destination size
+                    4'b0100: begin ext_bank1_set_status    = 1; end // set status
+                    4'b0101: begin ext_bank1_set_profile   = 1; end // set profile
                     default: begin end // Default case for unsupported addresses
                 endcase
             end
@@ -163,7 +163,5 @@ always @(*) begin
     end
 
 end
-
-
 
 endmodule

@@ -4,6 +4,7 @@
 module s_axi_read #(
     parameter ADDR_WIDTH = 16, // Address width for AXI interface
     parameter DATA_WIDTH = 32, // Data width for AXI interface
+
     parameter BANK1_INDEX_WIDTH    =  2, // 2 ^ 2 = 4 slots
     parameter BANK1_SRC_ADDR_WIDTH = 32,
     parameter BANK1_SRC_SIZE_WIDTH = 26,
@@ -129,5 +130,3 @@ always @(*) begin
 end
 
 endmodule
-
-
