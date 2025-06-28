@@ -302,11 +302,13 @@ always @(posedge clk or negedge reset ) begin
     if (~reset) begin
         mainStatus <= STATUS_SHUTDOWN;
         mainCnt    <= 0;
+        dmaInitTask <= 0;
+        dmaExecTask <= 0;
     end else if (ext_bank0_set_control) begin
         case (ext_bank0_inp_control)
             CTRL_CLEAR: begin
-                mainStatus <= STATUS_SHUTDOWN;
-                mainCnt    <= 0;
+                mainStatus  <= STATUS_SHUTDOWN;
+                mainCnt     <= 0;
                 dmaInitTask <= 0;
                 dmaExecTask <= 0;
             end
