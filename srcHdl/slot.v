@@ -38,7 +38,7 @@ module Slot #(
 
 //// set trigger ports
 
-always @( (posedge clk) or (negedge reset) ) begin
+always @( posedge clk or negedge reset ) begin
     
     if (~reset) begin
         out_src_addr <= 0;

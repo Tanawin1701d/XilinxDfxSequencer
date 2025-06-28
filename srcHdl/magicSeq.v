@@ -1,4 +1,4 @@
-module MagicSeqCore #(
+module MagicSeqTop #(
 
     parameter ADDR_WIDTH = 16, // Address width for AXI interface
     parameter DATA_WIDTH = 32, // Data width for AXI interface
@@ -30,7 +30,7 @@ input  wire                   S_AXI_ARVALID,
 output wire                   S_AXI_ARREADY,
 
 // Read Data Channel
-output reg  [DATA_WIDTH-1:0]   S_AXI_RDATA, ////// read data output acctually it is a reg
+output wire  [DATA_WIDTH-1:0]   S_AXI_RDATA, ////// read data output acctually it is a reg
 output wire [1:0]              S_AXI_RRESP,
 output wire                    S_AXI_RVALID,
 input  wire                    S_AXI_RREADY,
