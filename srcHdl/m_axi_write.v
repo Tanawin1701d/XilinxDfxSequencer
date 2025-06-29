@@ -14,7 +14,7 @@ module m_axi_write #(
     parameter BANK0_STATUS_WIDTH  = 4,
     parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH, /// the counter for the sequencer
 
-    parameter DMA_INIT_TASK_CNT   = 4, //// (baseAddr0 + size0) + (baseAddr1 + size1)
+    parameter DMA_INIT_TASK_CNT   = 6, //// (baseAddr0 + size0) + (baseAddr1 + size1)
     parameter DMA_EXEC_TASK_CNT   = 1
 )(
     input  wire                   clk,
@@ -63,13 +63,13 @@ module m_axi_write #(
 *
 **/
 
+wire[GLOB_ADDR_WIDTH-1: 0] dmaSrcCtrlADDR     = ext_bank0_out_dmaBaseAddr + 32'h00;
 wire[GLOB_ADDR_WIDTH-1: 0] dmaSrcDataAddrADDR = ext_bank0_out_dmaBaseAddr + 32'h18;
 wire[GLOB_ADDR_WIDTH-1: 0] dmaSrcDataSizeADDR = ext_bank0_out_dmaBaseAddr + 32'h28;
 
+wire[GLOB_ADDR_WIDTH-1: 0] dmaDesCtrlADDR     = ext_bank0_out_dmaBaseAddr + 32'h30;
 wire[GLOB_ADDR_WIDTH-1: 0] dmaDesDataAddrADDR = ext_bank0_out_dmaBaseAddr + 32'h48;
 wire[GLOB_ADDR_WIDTH-1: 0] dmaDesDataSizeADDR = ext_bank0_out_dmaBaseAddr + 32'h58;
-
-wire[GLOB_ADDR_WIDTH-1: 0] dmaCtrlAddrADDR    = ext_bank0_out_dmaBaseAddr + 32'h00;
 
 
 localparam STATUS_IDLE   = 4'b0000;
@@ -133,25 +133,35 @@ always @ (*) begin
 
     if (slaveInit != 0)begin
 
-        if (state == STATUS_UNLOCK)begin
+        if (state == STATUS_UNLOCK)begin //// STATUS_UNLOCK is one cycle
             slaveFinInit = slaveInit;
         end
 
         case(slaveInit)
-            4'b0001: begin 
+        //////////////////// set src read
+            6'b000001: begin
+                        M_AXI_AWADDR = dmaSrcCtrlADDR;
+                        M_AXI_WDATA  = {{(GLOB_DATA_WIDTH - 13){1'b0}}, 13'b1_0000_0000_0001}; //// start command
+                    end
+            6'b000010: begin 
                         M_AXI_AWADDR = dmaSrcDataAddrADDR; 
                         M_AXI_WDATA  = slave_bank1_out_src_addr;
                         
                     end
-            4'b0010: begin 
+            6'b000100: begin 
                         M_AXI_AWADDR = dmaSrcDataSizeADDR; 
                         M_AXI_WDATA  = {{(GLOB_DATA_WIDTH - BANK1_DST_SIZE_WIDTH){1'b0}}, slave_bank1_out_src_size}; 
                     end
-            4'b0100: begin 
+
+            6'b001000: begin
+                        M_AXI_AWADDR = dmaDesCtrlADDR;
+                        M_AXI_WDATA  = {{(GLOB_DATA_WIDTH - 13){1'b0}}, 13'b1_0000_0000_0001}; //// start command
+                    end
+            6'b010000: begin 
                         M_AXI_AWADDR = dmaDesDataAddrADDR; 
                         M_AXI_WDATA  = slave_bank1_out_des_addr; 
                     end
-            4'b1000: begin 
+            6'b100000: begin 
                         M_AXI_AWADDR = dmaDesDataSizeADDR; 
                         M_AXI_WDATA  = {{(GLOB_DATA_WIDTH - BANK1_DST_SIZE_WIDTH){1'b0}}, slave_bank1_out_des_size}; 
                     end
@@ -162,13 +172,14 @@ always @ (*) begin
                         slaveStartExecAccept  = 0;        
                     end
         endcase
-    end else if (slaveStartExec != 0) begin
-            M_AXI_AWADDR = dmaCtrlAddrADDR;
-            M_AXI_WDATA  = 1;
-            if (state == STATUS_UNLOCK)begin
-            slaveFinInit = slaveInit;
-        end
     end
+    // end else if (slaveStartExec != 0) begin
+    //         M_AXI_AWADDR = dmaCtrlAddrADDR;
+    //         M_AXI_WDATA  = 1;
+    //         if (state == STATUS_UNLOCK)begin
+    //         slaveFinInit = slaveInit;
+    //         end
+    // end
     
 end
 

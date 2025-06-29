@@ -15,7 +15,7 @@ module MagicSeqCore #(
     parameter BANK0_STATUS_WIDTH  = 4,
     parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH, /// the counter for the sequencer
 
-    parameter DMA_INIT_TASK_CNT   = 4, //// (baseAddr0 + size0) + (baseAddr1 + size1)
+    parameter DMA_INIT_TASK_CNT   = 6, //// (baseAddr0 + size0) + (baseAddr1 + size1)
     parameter DMA_EXEC_TASK_CNT   = 1
 ) (
     input wire clk,
@@ -342,22 +342,25 @@ always @(posedge clk or negedge reset ) begin
             STATUS_INITIALIZING: begin
                 // do nothing, just keep the current status
                 // we can trigger the slave to do something
-                if (slaveFinInit[DMA_INIT_TASK_CNT - 1]) begin
+                if (slaveFinInit[DMA_INIT_TASK_CNT - 1]) begin /// slaveFinInit is one cycle
                     mainStatus <= STATUS_TRIGGERING; // go to triggering state
                     dmaInitTask <= 0; //// clear the sequence tracker
-                    dmaExecTask <= 1; ///// initialize with 
+                    dmaExecTask <= 0; ///// initialize with 
+                    ///// TODO if next dmaExecTask will be 1 if the state should be used
                 end else if (slaveFinInit != 0) begin
                     dmaInitTask <= dmaInitTask << 1; /// shift to the next task
                 end
             end
             STATUS_TRIGGERING: begin
-                if (slaveStartExecAccept[DMA_EXEC_TASK_CNT-1]) begin
-                    // trigger the slave to start executing
-                    mainStatus <= STATUS_WAIT4FIN; // go to wait for finish state
-                    dmaExecTask <= 0;
-                end else if (slaveStartExecAccept[DMA_EXEC_TASK_CNT-1] != 0) begin
-                    dmaExecTask <= dmaExecTask << 1;
-                end
+                mainStatus <= STATUS_WAIT4FIN;
+
+                // if (slaveStartExecAccept[DMA_EXEC_TASK_CNT-1]) begin
+                //     // trigger the slave to start executing
+                //     mainStatus <= STATUS_WAIT4FIN; // go to wait for finish state
+                //     dmaExecTask <= 0;
+                // end else if (slaveStartExecAccept[DMA_EXEC_TASK_CNT-1] != 0) begin
+                //     dmaExecTask <= dmaExecTask << 1;
+                // end
             end
             STATUS_WAIT4FIN: begin
                 if(slaveFinExec) begin
