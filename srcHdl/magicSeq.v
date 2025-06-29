@@ -97,7 +97,7 @@ input  wire [1:0]                     M_AXI_BRESP,
 input  wire                           M_AXI_BVALID,
 output wire                           M_AXI_BREADY,
 
-output wire                           slaveReprog,  ///// trigger slave dma to reprogram
+output wire [(1 <<BANK0_CNT_WIDTH)-1: 0] slaveReprog,  ///// trigger slave dma to reprogram
 input  wire                           nslaveReset,  ///// the slave dma is ready to reprogram
 
 input  wire                           slaveFinExec,

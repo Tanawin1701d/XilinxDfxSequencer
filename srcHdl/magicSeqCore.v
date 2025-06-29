@@ -90,7 +90,7 @@ module MagicSeqCore #(
     ///// 
     ///// this will trigger the dfx Controller usally hardware trigger
     /////
-    output wire slaveReprog, ///// trigger slave dfx Controller to reprogram
+    output wire [(1 <<BANK0_CNT_WIDTH)-1: 0] slaveReprog, ///// trigger slave dfx Controller to reprogram
     input  wire nslaveReset, ///// the signal from dfx Controller that rm module is reset active low
     ///// 
     ///// this will trigger the dma Controller
@@ -128,8 +128,10 @@ localparam CTRL_CLEAR            = 4'b0000;
 localparam CTRL_SHUTDOWN         = 4'b0001;
 localparam CTRL_START            = 4'b0010;
 
-reg [BANK0_STATUS_WIDTH-1:0]    mainStatus;
-reg [BANK0_CNT_WIDTH   -1:0]    mainCnt;
+reg [BANK0_STATUS_WIDTH-1   : 0]    mainStatus;
+reg [BANK0_CNT_WIDTH   -1   : 0]    mainCnt;
+reg [(1 <<BANK0_CNT_WIDTH)-1: 0]    mainTrigger;
+assign slaveReprog = (mainStatus == STATUS_REPROG) ? mainTrigger : 0; //// we want only when it is in stage reprogramming(only 1 cycle)
 reg [BANK0_CNT_WIDTH   -1:0]    endCnt;
 
 reg [GLOB_ADDR_WIDTH   -1:0]    dmaBaseAddr;
@@ -304,6 +306,7 @@ always @(posedge clk or negedge reset ) begin
     if (~reset) begin
         mainStatus <= STATUS_SHUTDOWN;
         mainCnt    <= 0;
+        mainTrigger <= 0;
         dmaInitTask <= 0;
         dmaExecTask <= 0;
     end else if (ext_bank0_set_control) begin
@@ -311,6 +314,7 @@ always @(posedge clk or negedge reset ) begin
             CTRL_CLEAR: begin
                 mainStatus  <= STATUS_SHUTDOWN;
                 mainCnt     <= 0;
+                mainTrigger <= 0;
                 dmaInitTask <= 0;
                 dmaExecTask <= 0;
             end
@@ -321,6 +325,7 @@ always @(posedge clk or negedge reset ) begin
                 if (mainStatus == STATUS_SHUTDOWN) begin
                     mainStatus <= STATUS_REPROG;
                     mainCnt    <= 0; // reset the counter
+                    mainTrigger<= 1;
                 end
             end
             default: begin
@@ -341,7 +346,7 @@ always @(posedge clk or negedge reset ) begin
                 //     mainStatus <= STATUS_INITIALIZING; // go to initializing state
                 //     dmaInitTask <= 1; //// intializee the init task 
                 // end
-                mainStatus <= STATUS_W4SLAVERESET;
+                mainStatus  <= STATUS_W4SLAVERESET;
             end
             STATUS_W4SLAVERESET: begin
                 ///// wait4 reset occur
@@ -384,9 +389,11 @@ always @(posedge clk or negedge reset ) begin
                     // the slave has finished executing, we can go to the next step
                     if (mainCnt < endCnt) begin
                         mainCnt <= mainCnt + 1; // increment the counter
+                        mainTrigger <= (mainTrigger << 1);
                         mainStatus <= STATUS_REPROG; // go back to initializing state
                     end else begin
-                        mainCnt    <= 0; // reset the counter
+                        mainCnt     <= 0; // reset the counter
+                        mainTrigger <= 0;
                         mainStatus <= STATUS_SHUTDOWN; // go back to shutdown state
                     end
                 end
