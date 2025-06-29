@@ -97,8 +97,13 @@ input  wire [1:0]                     M_AXI_BRESP,
 input  wire                           M_AXI_BVALID,
 output wire                           M_AXI_BREADY,
 
-input  wire                           slaveFinExec
+input  wire                           slaveFinExec,
 
+output wire [DMA_INIT_TASK_CNT-1: 0]  dbg_slaveInit, ///// trigger slave dma to do somthing
+output wire [DMA_INIT_TASK_CNT-1: 0]  dbg_slaveFinInit,
+
+output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExec,
+output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExecAccept ///// the slave dma is ready to start
 
 );
 
@@ -179,6 +184,11 @@ input  wire                           slaveFinExec
 
     wire [DMA_EXEC_TASK_CNT-1: 0] slaveStartExec      ;
     wire [DMA_EXEC_TASK_CNT-1: 0] slaveStartExecAccept; ///// the slave dma is ready to start
+
+    assign dbg_slaveInit            = slaveInit;
+    assign dbg_slaveFinInit         = slaveFinInit;
+    assign dbg_slaveStartExec       = slaveStartExec;
+    assign dbg_slaveStartExecAccept = slaveStartExecAccept;
 
     /// wire  slaveFinExec; ///// the slave dma is finished, so we can go to triggering next
     //////////// we route it as input
