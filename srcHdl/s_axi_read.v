@@ -55,6 +55,12 @@ module s_axi_read #(
     input wire [GLOB_ADDR_WIDTH   -1:0] ext_bank0_out_dfxCtrlAddr
 );
 
+always @(*)begin
+    case(ext_bank1_out_ready)
+        default: begin end
+    endcase
+end
+
 localparam ST_IDLE     = 3'b000;
 localparam ST_READDATA = 3'b010;
 

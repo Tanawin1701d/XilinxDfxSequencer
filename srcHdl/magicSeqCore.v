@@ -95,11 +95,11 @@ module MagicSeqCore #(
     ///// 
     ///// this will trigger the dma Controller
     /////
-    output wire slaveInit   [DMA_INIT_TASK_CNT-1: 0], ///// trigger slave dma to do somthing
-    input  wire slaveFinInit[DMA_INIT_TASK_CNT-1: 0],
+    output wire[DMA_INIT_TASK_CNT-1: 0] slaveInit   , ///// trigger slave dma to do somthing
+    input  wire[DMA_INIT_TASK_CNT-1: 0] slaveFinInit,
 
-    output wire slaveStartExec      [DMA_EXEC_TASK_CNT-1: 0],
-    input  wire slaveStartExecAccept[DMA_EXEC_TASK_CNT-1: 0], ///// the slave dma is ready to start
+    output wire [DMA_EXEC_TASK_CNT-1: 0] slaveStartExec      ,
+    input  wire [DMA_EXEC_TASK_CNT-1: 0] slaveStartExecAccept, ///// the slave dma is ready to start
 
     input wire  slaveFinExec, ///// the slave dma is finished, so we can go to triggering next
 

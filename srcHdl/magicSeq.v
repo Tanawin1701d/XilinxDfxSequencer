@@ -174,11 +174,11 @@ input  wire                           slaveFinExec
     wire slaveReprog; ///// trigger slave dma to reprogram
     wire slaveReprogAccept; ///// the slave dma is ready to reprogram
 
-    wire slaveInit   [DMA_INIT_TASK_CNT-1: 0]; ///// trigger slave dma to do somthing
-    wire slaveFinInit[DMA_INIT_TASK_CNT-1: 0];
+    wire [DMA_INIT_TASK_CNT-1: 0] slaveInit   ; ///// trigger slave dma to do somthing
+    wire [DMA_INIT_TASK_CNT-1: 0] slaveFinInit;
 
-    wire slaveStartExec      [DMA_EXEC_TASK_CNT-1: 0];
-    wire slaveStartExecAccept[DMA_EXEC_TASK_CNT-1: 0]; ///// the slave dma is ready to start
+    wire [DMA_EXEC_TASK_CNT-1: 0] slaveStartExec      ;
+    wire [DMA_EXEC_TASK_CNT-1: 0] slaveStartExecAccept; ///// the slave dma is ready to start
 
     /// wire  slaveFinExec; ///// the slave dma is finished, so we can go to triggering next
     //////////// we route it as input
@@ -406,7 +406,7 @@ m_axi_write #(
     .slave_bank1_out_status(slave_bank1_out_status),
     .slave_bank1_out_profile(slave_bank1_out_profile)
 
-)
+);
 
 
 

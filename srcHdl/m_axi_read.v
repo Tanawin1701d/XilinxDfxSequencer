@@ -41,7 +41,7 @@ output  wire                          M_AXI_RREADY
 assign M_AXI_ARADDR    = 0;
 assign M_AXI_ARVALID   = 0;
 
-assign M_AXI_RREADY    = 1;
+assign M_AXI_RREADY    = 0;
 
 
 

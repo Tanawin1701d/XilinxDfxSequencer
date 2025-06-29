@@ -37,12 +37,12 @@ module SlotArr #(
 );
 
 
-    wire [DST_ADDR_WIDTH-1:0] out_src_addr_pool [0: (1 << INDEX_WIDTH)];
-    wire [DST_SIZE_WIDTH-1:0] out_src_size_pool [0: (1 << INDEX_WIDTH)];
-    wire [DST_ADDR_WIDTH-1:0] out_des_addr_pool [0: (1 << INDEX_WIDTH)];
-    wire [DST_SIZE_WIDTH-1:0] out_des_size_pool [0: (1 << INDEX_WIDTH)];
-    wire [STATUS_WIDTH  -1:0] out_status_pool   [0: (1 << INDEX_WIDTH)];
-    wire [PROFILE_WIDTH -1:0] out_profile_pool  [0: (1 << INDEX_WIDTH)];
+    wire [DST_ADDR_WIDTH-1:0] out_src_addr_pool [0: ((1 << INDEX_WIDTH)-1)];
+    wire [DST_SIZE_WIDTH-1:0] out_src_size_pool [0: ((1 << INDEX_WIDTH)-1)];
+    wire [DST_ADDR_WIDTH-1:0] out_des_addr_pool [0: ((1 << INDEX_WIDTH)-1)];
+    wire [DST_SIZE_WIDTH-1:0] out_des_size_pool [0: ((1 << INDEX_WIDTH)-1)];
+    wire [STATUS_WIDTH  -1:0] out_status_pool   [0: ((1 << INDEX_WIDTH)-1)];
+    wire [PROFILE_WIDTH -1:0] out_profile_pool  [0: ((1 << INDEX_WIDTH)-1)];
 
     // Instantiate the Slot module for each slot in the array
     genvar i;
@@ -89,6 +89,13 @@ module SlotArr #(
     // Use a multiplexer to select the output from the appropriate slot based on the input index
 integer muxIdx;
 always @(*) begin
+
+                out_src_addr = 0;
+                out_src_size = 0;
+                out_des_addr = 0;
+                out_des_size = 0;
+                out_status   = 0;
+                out_profile  = 0;
 
         for (muxIdx = 0; muxIdx < (1 << INDEX_WIDTH); muxIdx = muxIdx + 1) begin
             if (out_index == muxIdx) begin

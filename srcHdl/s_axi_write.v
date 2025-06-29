@@ -56,11 +56,20 @@ module s_axi_write #(
     output reg                            ext_bank0_set_control, /// set control signal
     output wire [BANK0_CNT_WIDTH-1:0]     ext_bank0_inp_endCnt,      ///
     output reg                            ext_bank0_set_endCnt,      ///
-    output reg  [GLOB_ADDR_WIDTH-1: 0]    ext_bank0_inp_dmaBaseAddr,
-    output wire                           ext_bank0_set_dmaBaseAddr,
-    output reg  [GLOB_ADDR_WIDTH-1: 0]    ext_bank0_inp_dfxCtrlAddr,
-    output wire                           ext_bank0_set_dfxCtrlAddr
+
+    output wire [GLOB_ADDR_WIDTH-1: 0]    ext_bank0_inp_dmaBaseAddr,
+    output reg                            ext_bank0_set_dmaBaseAddr,
+    output wire [GLOB_ADDR_WIDTH-1: 0]    ext_bank0_inp_dfxCtrlAddr,
+    output reg                           ext_bank0_set_dfxCtrlAddr
 );
+
+
+always @(*)begin
+    case(S_AXI_WSTRB)
+        default: begin end
+    endcase
+end
+
 
 
 localparam ST_IDLE = 3'b000;
