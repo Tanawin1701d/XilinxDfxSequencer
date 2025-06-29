@@ -3,3 +3,4 @@ ip_repo/*
 ip_test/*
 VivadoTest/*
 VivadoTest2/*
+.Xil/*
