@@ -97,6 +97,9 @@ input  wire [1:0]                     M_AXI_BRESP,
 input  wire                           M_AXI_BVALID,
 output wire                           M_AXI_BREADY,
 
+output wire                           slaveReprog,  ///// trigger slave dma to reprogram
+input  wire                           nslaveReset,  ///// the slave dma is ready to reprogram
+
 input  wire                           slaveFinExec,
 
 output wire [DMA_INIT_TASK_CNT-1: 0]  dbg_slaveInit, ///// trigger slave dma to do somthing
@@ -176,8 +179,6 @@ output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExecAccept ///// the slave dm
     //////////////////////////////////////////////////////////
     // slave functionality                         ///////////
     //////////////////////////////////////////////////////////
-    wire slaveReprog; ///// trigger slave dma to reprogram
-    wire slaveReprogAccept; ///// the slave dma is ready to reprogram
 
     wire [DMA_INIT_TASK_CNT-1: 0] slaveInit   ; ///// trigger slave dma to do somthing
     wire [DMA_INIT_TASK_CNT-1: 0] slaveFinInit;
@@ -202,8 +203,6 @@ output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExecAccept ///// the slave dm
 
 
     ////// for now we dummy assign the dma connection signal to prevent errror
-    assign slaveReprogAccept = 1;
-
 
 ///////////////////////////////////////////////////////////////
 ///////// create axi interface for read channel ///////////////
@@ -500,7 +499,7 @@ MagicSeqCore #(
 
 
     .slaveReprog(slaveReprog), ///// trigger slave dma to reprogram
-    .slaveReprogAccept(slaveReprogAccept), ///// the slave dma is ready to reprogram
+    .nslaveReset(nslaveReset), ///// the slave dma is ready to reprogram
 
     .slaveInit(slaveInit), ///// trigger slave dma to do somthing
     .slaveFinInit(slaveFinInit),

@@ -90,8 +90,8 @@ module MagicSeqCore #(
     ///// 
     ///// this will trigger the dfx Controller usally hardware trigger
     /////
-    output wire slaveReprog, ///// trigger slave dma to reprogram
-    input  wire slaveReprogAccept, ///// the slave dma is ready to reprogram
+    output wire slaveReprog, ///// trigger slave dfx Controller to reprogram
+    input  wire nslaveReset, ///// the signal from dfx Controller that rm module is reset active low
     ///// 
     ///// this will trigger the dma Controller
     /////
@@ -117,10 +117,12 @@ module MagicSeqCore #(
 
 localparam STATUS_SHUTDOWN       = 4'b0000;
 localparam STATUS_REPROG         = 4'b0001;
-localparam STATUS_INITIALIZING   = 4'b0010; // the system is initializing, we can trigger the slave to do something
-localparam STATUS_TRIGGERING     = 4'b0011;
-localparam STATUS_WAIT4FIN       = 4'b0100;
-localparam STATUS_PAUSEONERROR   = 4'b0101; // the system is paused on error, we can not do anything
+localparam STATUS_W4SLAVERESET   = 4'b0010;
+localparam STATUS_W4SLAVEOP      = 4'b0011;
+localparam STATUS_INITIALIZING   = 4'b0100; // the system is initializing, we can trigger the slave to do something
+localparam STATUS_TRIGGERING     = 4'b0101;
+localparam STATUS_WAIT4FIN       = 4'b0110;
+localparam STATUS_PAUSEONERROR   = 4'b0111; // the system is paused on error, we can not do anything
 
 localparam CTRL_CLEAR            = 4'b0000;
 localparam CTRL_SHUTDOWN         = 4'b0001;
@@ -334,9 +336,24 @@ always @(posedge clk or negedge reset ) begin
             STATUS_REPROG: begin
                 // do nothing, just keep the current status
                 // we can trigger the slave to do something
-                if (slaveReprogAccept) begin
-                    mainStatus <= STATUS_INITIALIZING; // go to initializing state
-                    dmaInitTask <= 1; //// intializee the init task 
+                
+                // if (slaveReprogAccept) begin
+                //     mainStatus <= STATUS_INITIALIZING; // go to initializing state
+                //     dmaInitTask <= 1; //// intializee the init task 
+                // end
+                mainStatus <= STATUS_W4SLAVERESET;
+            end
+            STATUS_W4SLAVERESET: begin
+                ///// wait4 reset occur
+                if (~nslaveReset)begin
+                    mainStatus <= STATUS_W4SLAVEOP;
+                end
+
+            end
+            STATUS_W4SLAVEOP: begin
+                if (nslaveReset) begin
+                    mainStatus  <= STATUS_INITIALIZING;
+                    dmaInitTask <= 1;
                 end
             end
             STATUS_INITIALIZING: begin
