@@ -285,7 +285,9 @@ assign ext_bank1_set_fin_profile    = ext_bank1_mainActual_set_req & ext_bank1_s
 
 ///////////// writing profiler data
 
-assign bank1_inp_profile = (mainStatus == STATUS_REPROG) ? (slave_bank1_out_profile + 1) : ext_bank1_inp_profile;
+assign bank1_inp_profile = ( (mainStatus == STATUS_REPROG      ) | 
+                             (mainStatus == STATUS_W4SLAVERESET) |
+                             (mainStatus == STATUS_W4SLAVEOP   )) ? (slave_bank1_out_profile + 1) : ext_bank1_inp_profile;
 
 ////////////// writing pool
 assign bank1_set_fin_src_addr       = ext_bank1_set_fin_src_addr;
@@ -293,7 +295,10 @@ assign bank1_set_fin_src_size       = ext_bank1_set_fin_src_size;
 assign bank1_set_fin_des_addr       = ext_bank1_set_fin_des_addr;
 assign bank1_set_fin_des_size       = ext_bank1_set_fin_des_size;
 assign bank1_set_fin_status         = ext_bank1_set_fin_status;
-assign bank1_set_fin_profile        = ext_bank1_set_fin_profile | (mainStatus == STATUS_REPROG); 
+assign bank1_set_fin_profile        = ext_bank1_set_fin_profile | 
+                                    ( ( mainStatus == STATUS_REPROG       ) |
+                                      ( mainStatus == STATUS_W4SLAVERESET ) |
+                                      ( mainStatus == STATUS_W4SLAVEOP    ));
 
 
 //////////////////////////////////////////////
