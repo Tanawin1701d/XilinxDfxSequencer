@@ -14,7 +14,7 @@ module m_axi_read #(
     parameter BANK0_STATUS_WIDTH  = 4,
     parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH, /// the counter for the sequencer
 
-    parameter DMA_INIT_TASK_CNT   = 6, //// (baseAddr0 + size0) + (baseAddr1 + size1)
+    parameter DMA_INIT_TASK_CNT   = 8, //// (baseAddr0 + size0) + (baseAddr1 + size1)
     parameter DMA_EXEC_TASK_CNT   = 1
 )(
 
