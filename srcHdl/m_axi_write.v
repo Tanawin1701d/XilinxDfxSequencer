@@ -14,7 +14,7 @@ module m_axi_write #(
     parameter BANK0_STATUS_WIDTH  = 4,
     parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH, /// the counter for the sequencer
 
-    parameter DMA_INIT_TASK_CNT   = 6, //// (baseAddr0 + size0) + (baseAddr1 + size1)
+    parameter DMA_INIT_TASK_CNT   = 8, //// (reset interrupt + startReadChannel + baseAddr0 + size0) + (reset interrupt + startWriteChannel + baseAddr1 + size1)
     parameter DMA_EXEC_TASK_CNT   = 1
 )(
     input  wire                   clk,
@@ -63,9 +63,17 @@ module m_axi_write #(
 *
 **/
 
+//////// READ CHANNEL
+
+wire[GLOB_ADDR_WIDTH-1: 0] dmSrcStatusADDR    = ext_bank0_out_dmaBaseAddr + 32'h04;
+
 wire[GLOB_ADDR_WIDTH-1: 0] dmaSrcCtrlADDR     = ext_bank0_out_dmaBaseAddr + 32'h00;
 wire[GLOB_ADDR_WIDTH-1: 0] dmaSrcDataAddrADDR = ext_bank0_out_dmaBaseAddr + 32'h18;
 wire[GLOB_ADDR_WIDTH-1: 0] dmaSrcDataSizeADDR = ext_bank0_out_dmaBaseAddr + 32'h28;
+
+//////// WRITE CHANNEL
+
+wire[GLOB_ADDR_WIDTH-1: 0] dmDesStatusADDR    = ext_bank0_out_dmaBaseAddr + 32'h34;
 
 wire[GLOB_ADDR_WIDTH-1: 0] dmaDesCtrlADDR     = ext_bank0_out_dmaBaseAddr + 32'h30;
 wire[GLOB_ADDR_WIDTH-1: 0] dmaDesDataAddrADDR = ext_bank0_out_dmaBaseAddr + 32'h48;
@@ -138,30 +146,39 @@ always @ (*) begin
         end
 
         case(slaveInit)
-        //////////////////// set src read
-            6'b000001: begin
+
+            8'b00000001: begin
+                        M_AXI_AWADDR = dmSrcStatusADDR;
+                        M_AXI_WDATA  = {{(GLOB_DATA_WIDTH - 13){1'b0}}, 13'b1_0000_0000_0000}; //// start command
+            end
+            8'b00000010: begin
+                        M_AXI_AWADDR = dmDesStatusADDR;
+                        M_AXI_WDATA  = {{(GLOB_DATA_WIDTH - 13){1'b0}}, 13'b1_0000_0000_0000}; //// start command
+            end
+        //////////////////// set READ (RUN/SRCADDR/SRCSIZE)
+            8'b00000100: begin
                         M_AXI_AWADDR = dmaSrcCtrlADDR;
                         M_AXI_WDATA  = {{(GLOB_DATA_WIDTH - 13){1'b0}}, 13'b1_0000_0000_0001}; //// start command
                     end
-            6'b000010: begin 
+            8'b00001000: begin 
                         M_AXI_AWADDR = dmaSrcDataAddrADDR; 
                         M_AXI_WDATA  = slave_bank1_out_src_addr;
                         
                     end
-            6'b000100: begin 
+            8'b00010000: begin 
                         M_AXI_AWADDR = dmaSrcDataSizeADDR; 
                         M_AXI_WDATA  = {{(GLOB_DATA_WIDTH - BANK1_DST_SIZE_WIDTH){1'b0}}, slave_bank1_out_src_size}; 
                     end
-
-            6'b001000: begin
+            //////////////////// set WRITE (RUN/DESADDR/DESSIZE)
+            8'b00100000: begin
                         M_AXI_AWADDR = dmaDesCtrlADDR;
                         M_AXI_WDATA  = {{(GLOB_DATA_WIDTH - 13){1'b0}}, 13'b1_0000_0000_0001}; //// start command
                     end
-            6'b010000: begin 
+            8'b01000000: begin 
                         M_AXI_AWADDR = dmaDesDataAddrADDR; 
                         M_AXI_WDATA  = slave_bank1_out_des_addr; 
                     end
-            6'b100000: begin 
+            8'b10000000: begin 
                         M_AXI_AWADDR = dmaDesDataSizeADDR; 
                         M_AXI_WDATA  = {{(GLOB_DATA_WIDTH - BANK1_DST_SIZE_WIDTH){1'b0}}, slave_bank1_out_des_size}; 
                     end
