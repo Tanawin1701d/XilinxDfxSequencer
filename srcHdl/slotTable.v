@@ -71,6 +71,9 @@ module SlotArr #(
                 .DST_SIZE_WIDTH  (DST_SIZE_WIDTH),
                 .STATUS_WIDTH    (STATUS_WIDTH),
                 .PROFILE_WIDTH   (PROFILE_WIDTH),
+                .LD_MSK_WIDTH    (LD_MSK_WIDTH),
+                .ST_MSK_WIDTH    (ST_MSK_WIDTH),
+
                 .INPUT_IDX_WIDTH (INDEX_WIDTH),
                 .CUR_IDX         (i)
             ) slot_inst (
@@ -145,49 +148,3 @@ always @(*) begin
 end
 
 endmodule
-
-
-
-
-
-
-
-
-// module Slot #(
-//     parameter SRC_ADDR_WIDTH = 32,
-//     parameter SRC_SIZE_WIDTH = 26,
-//     parameter DST_ADDR_WIDTH = 32,
-//     parameter DST_SIZE_WIDTH = 26,
-//     parameter STATUS_WIDTH   = 2,
-//     parameter PROFILE_WIDTH  = 4,
-//     parameter INPUT_IDX_WIDTH = 1,
-//     parameter CUR_IDX = 0
-// ) (
-//     input wire clk,
-//     input wire reset,
-//     input wire [INPUT_IDX_WIDTH-1: 0]    inputIdx,
-
-//     // set Input ports
-//     input wire [SRC_ADDR_WIDTH-1:0] inp_src_addr,
-//     input wire [SRC_SIZE_WIDTH-1:0] inp_src_size,
-//     input wire [DST_ADDR_WIDTH-1:0] inp_des_addr,
-//     input wire [DST_SIZE_WIDTH-1:0] inp_des_size,
-//     input wire [STATUS_WIDTH-1:0]   inp_status,
-//     input wire [PROFILE_WIDTH-1:0]  inp_profile,
-//     // set trigger ports
-//     input wire                      set_src_addr,
-//     input wire                      set_src_size,
-//     input wire                      set_des_addr,
-//     input wire                      set_des_size,
-//     input wire                      set_status,
-//     input wire                      set_profile,
-//     // dest output ports
-//     output reg [SRC_ADDR_WIDTH-1:0] out_src_addr,
-//     output reg [SRC_SIZE_WIDTH-1:0] out_src_size,
-//     output reg [DST_ADDR_WIDTH-1:0] out_des_addr,
-//     output reg [DST_SIZE_WIDTH-1:0] out_des_size,
-//     output reg [STATUS_WIDTH  -1:0] out_status,
-//     output reg [PROFILE_WIDTH -1:0] out_profile
-// );
-
-// endmodule

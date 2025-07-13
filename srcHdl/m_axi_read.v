@@ -9,6 +9,8 @@ module m_axi_read #(
     parameter BANK1_DST_SIZE_WIDTH = 26,
     parameter BANK1_STATUS_WIDTH   =  2,
     parameter BANK1_PROFILE_WIDTH  = 32,
+    parameter BANK1_LD_MSK_WIDTH   =  8,
+    parameter BANK1_ST_MSK_WIDTH   =  8,
 
     parameter BANK0_CONTROL_WIDTH = 4,
     parameter BANK0_STATUS_WIDTH  = 4,
@@ -42,7 +44,5 @@ assign M_AXI_ARADDR    = 0;
 assign M_AXI_ARVALID   = 0;
 
 assign M_AXI_RREADY    = 0;
-
-
 
 endmodule

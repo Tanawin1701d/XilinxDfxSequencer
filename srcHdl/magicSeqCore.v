@@ -477,7 +477,9 @@ SlotArr #(
 .DST_ADDR_WIDTH (BANK1_DST_ADDR_WIDTH),
 .DST_SIZE_WIDTH (BANK1_DST_SIZE_WIDTH),
 .STATUS_WIDTH   (BANK1_STATUS_WIDTH),
-.PROFILE_WIDTH  (BANK1_PROFILE_WIDTH)
+.PROFILE_WIDTH  (BANK1_PROFILE_WIDTH),
+.LD_MSK_WIDTH   (BANK1_LD_MSK_WIDTH),
+.ST_MSK_WIDTH   (BANK1_ST_MSK_WIDTH)
 ) dayta (
     .clk(clk),
     .reset(reset),
@@ -519,44 +521,3 @@ SlotArr #(
 );
 
 endmodule
-
-
-
-// module SlotArr #(
-
-//     parameter INDEX_WIDTH = 2, // 2 ^ 2 = 4 slots
-//     parameter SRC_ADDR_WIDTH = 32,
-//     parameter SRC_SIZE_WIDTH = 26,
-//     parameter DST_ADDR_WIDTH = 32,
-//     parameter DST_SIZE_WIDTH = 26,
-//     parameter STATUS_WIDTH   = 2,
-//     parameter PROFILE_WIDTH  = 4
-// )(
-//     input wire clk,
-//     input wire reset,
-//     // Declare an array of slots
-//     input wire [INDEX_WIDTH-1:0]    inp_index,
-//     input wire [SRC_ADDR_WIDTH-1:0] inp_src_addr,
-//     input wire [SRC_SIZE_WIDTH-1:0] inp_src_size,
-//     input wire [DST_ADDR_WIDTH-1:0] inp_des_addr,
-//     input wire [DST_SIZE_WIDTH-1:0] inp_des_size,
-//     input wire [STATUS_WIDTH-1:0]   inp_status,
-//     input wire [PROFILE_WIDTH-1:0]  inp_profile,
-
-//     input wire set_src_addr,
-//     input wire set_src_size,
-//     input wire set_des_addr,
-//     input wire set_des_size,
-//     input wire set_status,
-//     input wire set_profile,
-
-//     // Output ports0
-//     input wire [INDEX_WIDTH-1:0]    out_index,
-//     output reg [DST_ADDR_WIDTH-1:0] out_src_addr,      // actually it is a wire
-//     output reg [DST_SIZE_WIDTH-1:0] out_src_size,      // actually it is a wire
-//     output reg [DST_ADDR_WIDTH-1:0] out_des_addr,      // actually it is a wire
-//     output reg [DST_SIZE_WIDTH-1:0] out_des_size,      // actually it is a wire
-//     output reg [STATUS_WIDTH-1:0]   out_status  ,      // actually it is a wire
-//     output reg [PROFILE_WIDTH-1:0]  out_profile      // actually it is a wire
-// );
-// endmodule
