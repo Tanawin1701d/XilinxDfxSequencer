@@ -12,6 +12,8 @@ module s_axi_write #(
     parameter BANK1_DST_SIZE_WIDTH = 26,
     parameter BANK1_STATUS_WIDTH   =  2,
     parameter BANK1_PROFILE_WIDTH  = 32,
+    parameter BANK1_LD_MSK_WIDTH   =  8,
+    parameter BANK1_ST_MSK_WIDTH   =  8,
 
     parameter BANK0_CONTROL_WIDTH = 4,
     parameter BANK0_STATUS_WIDTH  = 4,
@@ -44,19 +46,28 @@ module s_axi_write #(
     output wire [BANK1_DST_SIZE_WIDTH -1:0] ext_bank1_inp_des_size,    // actually it is a wire
     output wire [BANK1_STATUS_WIDTH   -1:0] ext_bank1_inp_status,      // actually it is a wire
     output wire [BANK1_PROFILE_WIDTH  -1:0] ext_bank1_inp_profile,     // actually it is a wire
+    output wire [BANK1_LD_MSK_WIDTH   -1:0] ext_bank1_inp_ld_mask,
+    output wire [BANK1_ST_MSK_WIDTH   -1:0] ext_bank1_inp_st_mask,
+    output wire [BANK1_ST_MSK_WIDTH   -1:0] ext_bank1_inp_st_intr_mask_abs,
 
-    output reg ext_bank1_set_src_addr,       // actually it is wire
-    output reg ext_bank1_set_src_size,       // actually it is wire
-    output reg ext_bank1_set_des_addr,       // actually it is wire
-    output reg ext_bank1_set_des_size,       // actually it is wire
-    output reg ext_bank1_set_status,       // actually it is wire
-    output reg ext_bank1_set_profile,       // actually it is wire
 
+    output reg ext_bank1_set_src_addr,             // actually it is wire
+    output reg ext_bank1_set_src_size,             // actually it is wire
+    output reg ext_bank1_set_des_addr,             // actually it is wire
+    output reg ext_bank1_set_des_size,             // actually it is wire
+    output reg ext_bank1_set_status,               // actually it is wire
+    output reg ext_bank1_set_profile,              // actually it is wire
+    output reg ext_bank1_set_fin_ld_mask,          // actually it is wire
+    output reg ext_bank1_set_fin_st_mask,          // actually it is wire
+    output reg ext_bank1_set_fin_st_intr_mask_abs, // actually it is wire
+
+    //// bank0 interconnect
     output wire [BANK0_CONTROL_WIDTH-1:0] ext_bank0_inp_control, /// set control data
     output reg                            ext_bank0_set_control, /// set control signal
     output wire [BANK0_CNT_WIDTH-1:0]     ext_bank0_inp_endCnt,      ///
     output reg                            ext_bank0_set_endCnt,      ///
 
+    
     output wire [GLOB_ADDR_WIDTH-1: 0]    ext_bank0_inp_dmaBaseAddr,
     output reg                            ext_bank0_set_dmaBaseAddr,
     output wire [GLOB_ADDR_WIDTH-1: 0]    ext_bank0_inp_dfxCtrlAddr,
@@ -125,13 +136,16 @@ assign S_AXI_BVALID  = (state == ST_RESP);
 
 /////////// bank1 data wiring 
 
-assign ext_bank1_inp_index           = write_addr[BANK1_INDEX_WIDTH + 6 - 1: 6]; /// the row in slot table
-assign ext_bank1_inp_src_addr        = S_AXI_WDATA[BANK1_SRC_ADDR_WIDTH-1  : 0];
-assign ext_bank1_inp_src_size        = S_AXI_WDATA[BANK1_SRC_SIZE_WIDTH-1  : 0];
-assign ext_bank1_inp_des_addr        = S_AXI_WDATA[BANK1_DST_ADDR_WIDTH-1  : 0];
-assign ext_bank1_inp_des_size        = S_AXI_WDATA[BANK1_DST_SIZE_WIDTH-1  : 0];
-assign ext_bank1_inp_status          = S_AXI_WDATA[BANK1_STATUS_WIDTH  -1  : 0];
-assign ext_bank1_inp_profile         = S_AXI_WDATA[BANK1_PROFILE_WIDTH -1  : 0];
+assign ext_bank1_inp_index             = write_addr[BANK1_INDEX_WIDTH + 6 - 1: 6]; /// the row in slot table
+assign ext_bank1_inp_src_addr          = S_AXI_WDATA[BANK1_SRC_ADDR_WIDTH-1  : 0];
+assign ext_bank1_inp_src_size          = S_AXI_WDATA[BANK1_SRC_SIZE_WIDTH-1  : 0];
+assign ext_bank1_inp_des_addr          = S_AXI_WDATA[BANK1_DST_ADDR_WIDTH-1  : 0];
+assign ext_bank1_inp_des_size          = S_AXI_WDATA[BANK1_DST_SIZE_WIDTH-1  : 0];
+assign ext_bank1_inp_status            = S_AXI_WDATA[BANK1_STATUS_WIDTH  -1  : 0];
+assign ext_bank1_inp_profile           = S_AXI_WDATA[BANK1_PROFILE_WIDTH -1  : 0];
+assign ext_bank1_inp_ld_mask           = S_AXI_WDATA[BANK1_LD_MSK_WIDTH  -1  : 0];
+assign ext_bank1_inp_st_mask           = S_AXI_WDATA[BANK1_ST_MSK_WIDTH  -1  : 0];
+assign ext_bank1_inp_st_intr_mask_abs  = S_AXI_WDATA[BANK1_ST_MSK_WIDTH  -1  : 0];
 
 //////////// bank0 data wiring
 
@@ -150,6 +164,10 @@ always @(*) begin
     ext_bank1_set_des_size    = 0; // Default value
     ext_bank1_set_status      = 0; // Default value
     ext_bank1_set_profile     = 0; // Default value
+    ext_bank1_set_fin_ld_mask            = 0;
+    ext_bank1_set_fin_st_mask            = 0;
+    ext_bank1_set_fin_st_intr_mask_abs   = 0;
+
     
 
     ext_bank0_set_control     = 0; // Default value
@@ -173,12 +191,15 @@ always @(*) begin
             2'b01: begin
 
                 case (write_addr[5:2]) // Address bits 5 to 2 determine the slot
-                    4'b0000: begin ext_bank1_set_src_addr  = 1; end // set source address
-                    4'b0001: begin ext_bank1_set_src_size  = 1; end // set source size
-                    4'b0010: begin ext_bank1_set_des_addr  = 1; end // set destination address
-                    4'b0011: begin ext_bank1_set_des_size  = 1; end // set destination size
-                    4'b0100: begin ext_bank1_set_status    = 1; end // set status
-                    4'b0101: begin ext_bank1_set_profile   = 1; end // set profile
+                    4'b0000: begin ext_bank1_set_src_addr             = 1; end // set source address
+                    4'b0001: begin ext_bank1_set_src_size             = 1; end // set source size
+                    4'b0010: begin ext_bank1_set_des_addr             = 1; end // set destination address
+                    4'b0011: begin ext_bank1_set_des_size             = 1; end // set destination size
+                    4'b0100: begin ext_bank1_set_status               = 1; end // set status
+                    4'b0101: begin ext_bank1_set_profile              = 1; end // set profile
+                    4'b0110: begin ext_bank1_set_fin_ld_mask          = 1; end // set load mask
+                    4'b0111: begin ext_bank1_set_fin_st_mask          = 1; end // set store mask
+                    4'b1000: begin ext_bank1_set_fin_st_intr_mask_abs = 1; end // set store interrupt mask
                     default: begin end // Default case for unsupported addresses
                 endcase
             end

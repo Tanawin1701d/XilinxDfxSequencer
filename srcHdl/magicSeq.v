@@ -13,6 +13,8 @@ module MagicSeqTop #(
     parameter BANK1_DST_SIZE_WIDTH = 26,
     parameter BANK1_STATUS_WIDTH   =  2,
     parameter BANK1_PROFILE_WIDTH  = 32,
+    parameter BANK1_LD_MSK_WIDTH   =  8,
+    parameter BANK1_ST_MSK_WIDTH   =  8,
 
     parameter BANK0_CONTROL_WIDTH = 4,
     parameter BANK0_STATUS_WIDTH  = 4,
@@ -100,7 +102,14 @@ output wire                           M_AXI_BREADY,
 output wire [(1 <<BANK0_CNT_WIDTH)-1: 0] slaveReprog,  ///// trigger slave dma to reprogram
 input  wire                           nslaveReset,  ///// the slave dma is ready to reprogram
 
-input  wire                           slaveFinExec,
+    // communicate with magic streammer
+output wire [BANK1_ST_MSK_WIDTH-1: 0] slaveMgsStoreReset, //// reset the interrupt signal
+output wire [BANK1_LD_MSK_WIDTH-1: 0] slaveMgsLoadReset,  //// reset the interrupt signal
+output wire [BANK1_ST_MSK_WIDTH-1: 0] slaveMgsStoreInit,  //// init the store of the magic streamer bucket
+output wire [BANK1_LD_MSK_WIDTH-1: 0] slaveMgsLoadInit,   //// init the load of the magic streamer bucket
+
+input wire  [BANK1_ST_MSK_WIDTH   -1: 0] mgsFinExec, ///// the slave magic sequencer Ip acknowledge that it is finish
+
 
 output wire [DMA_INIT_TASK_CNT-1: 0]  dbg_slaveInit, ///// trigger slave dma to do somthing
 output wire [DMA_INIT_TASK_CNT-1: 0]  dbg_slaveFinInit,
@@ -128,6 +137,9 @@ output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExecAccept ///// the slave dm
     wire [BANK1_DST_SIZE_WIDTH -1:0] ext_bank1_inp_des_size;
     wire [BANK1_STATUS_WIDTH   -1:0] ext_bank1_inp_status;
     wire [BANK1_PROFILE_WIDTH  -1:0] ext_bank1_inp_profile;
+    wire [BANK1_LD_MSK_WIDTH   -1:0] ext_bank1_inp_ld_mask;
+    wire [BANK1_ST_MSK_WIDTH   -1:0] ext_bank1_inp_st_mask;
+    wire [BANK1_ST_MSK_WIDTH   -1:0] ext_bank1_inp_st_intr_mask_abs;
 
     wire ext_bank1_set_src_addr;
     wire ext_bank1_set_src_size;
@@ -135,6 +147,9 @@ output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExecAccept ///// the slave dm
     wire ext_bank1_set_des_size;
     wire ext_bank1_set_status;
     wire ext_bank1_set_profile;
+    wire ext_bank1_set_ld_mask;
+    wire ext_bank1_set_st_mask;
+    wire ext_bank1_set_st_intr_mask_abs;
 
     wire ext_bank1_set_fin_src_addr;   /// the result external setting 
     wire ext_bank1_set_fin_src_size;   /// the result external setting 
@@ -142,6 +157,9 @@ output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExecAccept ///// the slave dm
     wire ext_bank1_set_fin_des_size;   /// the result external setting 
     wire ext_bank1_set_fin_status;     /// the result external setting   
     wire ext_bank1_set_fin_profile;    /// the result external setting  
+    wire ext_bank1_set_fin_ld_mask;
+    wire ext_bank1_set_fin_st_mask;
+    wire ext_bank1_set_fin_st_intr_mask_abs;
 
     // retriever from outsider
     wire [BANK1_INDEX_WIDTH    -1:0] ext_bank1_out_index;
@@ -152,6 +170,10 @@ output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExecAccept ///// the slave dm
     wire [BANK1_DST_SIZE_WIDTH -1:0] ext_bank1_out_des_size;
     wire [BANK1_STATUS_WIDTH   -1:0] ext_bank1_out_status;
     wire [BANK1_PROFILE_WIDTH  -1:0] ext_bank1_out_profile;
+    wire [BANK1_LD_MSK_WIDTH   -1:0] ext_bank1_out_ld_mask;     // actually it is a reg
+    wire [BANK1_ST_MSK_WIDTH   -1:0] ext_bank1_out_st_mask;
+    wire [BANK1_ST_MSK_WIDTH   -1:0] ext_bank1_out_st_intr_mask;
+
     wire                             ext_bank1_out_ready;
 
 
@@ -180,6 +202,7 @@ output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExecAccept ///// the slave dm
     // slave functionality                         ///////////
     //////////////////////////////////////////////////////////
 
+    ////// the mgs control will be handle by io
     wire [DMA_INIT_TASK_CNT-1: 0] slaveInit   ; ///// trigger slave dma to do somthing
     wire [DMA_INIT_TASK_CNT-1: 0] slaveFinInit;
 
@@ -200,6 +223,9 @@ output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExecAccept ///// the slave dm
     wire [BANK1_DST_SIZE_WIDTH -1:0] slave_bank1_out_des_size;
     wire [BANK1_STATUS_WIDTH   -1:0] slave_bank1_out_status  ;      // actually it is a reg
     wire [BANK1_PROFILE_WIDTH  -1:0] slave_bank1_out_profile ;      // actually it is a reg
+    wire [BANK1_LD_MSK_WIDTH   -1:0] slave_bank1_out_ld_mask;     // actually it is a reg
+    wire [BANK1_ST_MSK_WIDTH   -1:0] slave_bank1_out_st_mask;
+    wire [BANK1_ST_MSK_WIDTH   -1:0] slave_bank1_out_st_intr_mask;
 
 
     ////// for now we dummy assign the dma connection signal to prevent errror
@@ -249,7 +275,11 @@ s_axi_read #(
     .ext_bank1_out_des_size(ext_bank1_out_des_size),
     .ext_bank1_out_status(ext_bank1_out_status  ),      // actually it is a wire
     .ext_bank1_out_profile(ext_bank1_out_profile),       // actually it is a wire
+    .ext_bank1_out_ld_mask(ext_bank1_out_ld_mask),
+    .ext_bank1_out_st_mask(ext_bank1_out_st_mask),
+    .ext_bank1_out_st_intr_mask(ext_bank1_out_st_intr_mask),
     .ext_bank1_out_ready(ext_bank1_out_ready),         // actually it is a wire
+
 
     ////// bank0 interconnect
     .ext_bank0_out_status(ext_bank0_out_status),  /// read only and it is reg
@@ -309,6 +339,9 @@ s_axi_write #(
     .ext_bank1_inp_des_size(ext_bank1_inp_des_size),  // actually it is a wire
     .ext_bank1_inp_status(ext_bank1_inp_status),      // actually it is a wire
     .ext_bank1_inp_profile(ext_bank1_inp_profile),     // actually it is a wire
+    .ext_bank1_inp_ld_mask(ext_bank1_inp_ld_mask),
+    .ext_bank1_inp_st_mask(ext_bank1_inp_st_mask),
+    .ext_bank1_inp_st_intr_mask_abs(ext_bank1_inp_st_intr_mask_abs),
 
     .ext_bank1_set_src_addr(ext_bank1_set_src_addr),
     .ext_bank1_set_src_size(ext_bank1_set_src_size),
@@ -316,7 +349,10 @@ s_axi_write #(
     .ext_bank1_set_des_size(ext_bank1_set_des_size),
     .ext_bank1_set_status(ext_bank1_set_status),
     .ext_bank1_set_profile(ext_bank1_set_profile),
-
+    .ext_bank1_set_fin_ld_mask(ext_bank1_set_fin_ld_mask),
+    .ext_bank1_set_fin_st_mask(ext_bank1_set_fin_st_mask),
+    .ext_bank1_set_fin_st_intr_mask_abs(ext_bank1_set_fin_st_intr_mask_abs),
+    //// bank0 interconnect
     .ext_bank0_inp_control(ext_bank0_inp_control),
     .ext_bank0_set_control(ext_bank0_set_control),
     .ext_bank0_inp_endCnt(ext_bank0_inp_endCnt),
@@ -444,39 +480,52 @@ MagicSeqCore #(
     .reset(reset),
 
     // setter from outsider
-    .ext_bank1_inp_index(ext_bank1_inp_index),
-    .ext_bank1_inp_src_addr(ext_bank1_inp_src_addr),
-    .ext_bank1_inp_src_size(ext_bank1_inp_src_size),
-    .ext_bank1_inp_des_addr(ext_bank1_inp_des_addr),
-    .ext_bank1_inp_des_size(ext_bank1_inp_des_size),
-    .ext_bank1_inp_status(ext_bank1_inp_status),
-    .ext_bank1_inp_profile(ext_bank1_inp_profile),
+    .ext_bank1_inp_index                (ext_bank1_inp_index),
+    .ext_bank1_inp_src_addr             (ext_bank1_inp_src_addr),
+    .ext_bank1_inp_src_size             (ext_bank1_inp_src_size),
+    .ext_bank1_inp_des_addr             (ext_bank1_inp_des_addr),
+    .ext_bank1_inp_des_size             (ext_bank1_inp_des_size),
+    .ext_bank1_inp_status               (ext_bank1_inp_status),
+    .ext_bank1_inp_profile              (ext_bank1_inp_profile),
+    .ext_bank1_inp_ld_mask              (ext_bank1_inp_ld_mask),
+    .ext_bank1_inp_st_mask              (ext_bank1_inp_st_mask),
+    .ext_bank1_inp_st_intr_mask_abs     (ext_bank1_inp_st_intr_mask_abs),
 
-    .ext_bank1_set_src_addr(ext_bank1_set_src_addr),
-    .ext_bank1_set_src_size(ext_bank1_set_src_size),
-    .ext_bank1_set_des_addr(ext_bank1_set_des_addr),
-    .ext_bank1_set_des_size(ext_bank1_set_des_size),
-    .ext_bank1_set_status(ext_bank1_set_status),
-    .ext_bank1_set_profile(ext_bank1_set_profile),
+    .ext_bank1_set_src_addr             (ext_bank1_set_src_addr),
+    .ext_bank1_set_src_size             (ext_bank1_set_src_size),
+    .ext_bank1_set_des_addr             (ext_bank1_set_des_addr),
+    .ext_bank1_set_des_size             (ext_bank1_set_des_size),
+    .ext_bank1_set_status               (ext_bank1_set_status),
+    .ext_bank1_set_profile              (ext_bank1_set_profile),
+    .ext_bank1_set_ld_mask              (ext_bank1_set_ld_mask),
+    .ext_bank1_set_st_mask              (ext_bank1_set_st_mask),
+    .ext_bank1_set_st_intr_mask_abs     (ext_bank1_set_st_intr_mask_abs),
 
-    .ext_bank1_set_fin_src_addr(ext_bank1_set_fin_src_addr),
-    .ext_bank1_set_fin_src_size(ext_bank1_set_fin_src_size),
-    .ext_bank1_set_fin_des_addr(ext_bank1_set_fin_des_addr),
-    .ext_bank1_set_fin_des_size(ext_bank1_set_fin_des_size),
-    .ext_bank1_set_fin_status(ext_bank1_set_fin_status),
-    .ext_bank1_set_fin_profile(ext_bank1_set_fin_profile),
+    .ext_bank1_set_fin_src_addr         (ext_bank1_set_fin_src_addr),
+    .ext_bank1_set_fin_src_size         (ext_bank1_set_fin_src_size),
+    .ext_bank1_set_fin_des_addr         (ext_bank1_set_fin_des_addr),
+    .ext_bank1_set_fin_des_size         (ext_bank1_set_fin_des_size),
+    .ext_bank1_set_fin_status           (ext_bank1_set_fin_status),
+    .ext_bank1_set_fin_profile          (ext_bank1_set_fin_profile),
+    .ext_bank1_set_fin_ld_mask          (ext_bank1_set_fin_ld_mask),
+    .ext_bank1_set_fin_st_mask          (ext_bank1_set_fin_st_mask),
+    .ext_bank1_set_fin_st_intr_mask_abs (ext_bank1_set_fin_st_intr_mask_abs),
+    
 
-    // retrieve from outsider
+    // retrieve to outsider
 
-    .ext_bank1_out_index(ext_bank1_out_index),
-    .ext_bank1_out_req(ext_bank1_out_req),
-    .ext_bank1_out_src_addr(ext_bank1_out_src_addr),
-    .ext_bank1_out_src_size(ext_bank1_out_src_size),
-    .ext_bank1_out_des_addr(ext_bank1_out_des_addr),
-    .ext_bank1_out_des_size(ext_bank1_out_des_size),
-    .ext_bank1_out_status(ext_bank1_out_status),
-    .ext_bank1_out_profile(ext_bank1_out_profile),
-    .ext_bank1_out_ready(ext_bank1_out_ready),
+    .ext_bank1_out_index        (ext_bank1_out_index),
+    .ext_bank1_out_req          (ext_bank1_out_req),
+    .ext_bank1_out_src_addr     (ext_bank1_out_src_addr),
+    .ext_bank1_out_src_size     (ext_bank1_out_src_size),
+    .ext_bank1_out_des_addr     (ext_bank1_out_des_addr),
+    .ext_bank1_out_des_size     (ext_bank1_out_des_size),
+    .ext_bank1_out_status       (ext_bank1_out_status),
+    .ext_bank1_out_profile      (ext_bank1_out_profile),
+    .ext_bank1_out_ld_mask      (ext_bank1_out_ld_mask),
+    .ext_bank1_out_st_mask      (ext_bank1_out_st_mask),
+    .ext_bank1_out_st_intr_mask (ext_bank1_out_st_intr_mask),
+    .ext_bank1_out_ready        (ext_bank1_out_ready),
 
     .ext_bank0_inp_control(ext_bank0_inp_control),
     .ext_bank0_set_control(ext_bank0_set_control),
@@ -497,17 +546,22 @@ MagicSeqCore #(
     .ext_bank0_set_dfxCtrlAddr(ext_bank0_set_dfxCtrlAddr),
     .ext_bank0_out_dfxCtrlAddr(ext_bank0_out_dfxCtrlAddr),
 
+    /////// communicate with slave
 
     .slaveReprog(slaveReprog), ///// trigger slave dma to reprogram
     .nslaveReset(nslaveReset), ///// the slave dma is ready to reprogram
 
-    .slaveInit(slaveInit), ///// trigger slave dma to do somthing
-    .slaveFinInit(slaveFinInit),
+    .slaveMgsStoreReset(slaveMgsStoreReset),
+    .slaveMgsLoadReset (slaveMgsLoadReset),
+    .slaveMgsStoreInit (slaveMgsStoreInit),
+    .slaveMgsLoadInit  (slaveMgsLoadInit),
+    .slaveInit         (slaveInit), ///// trigger slave dma to do somthing
+    .slaveFinInit      (slaveFinInit),
 
     .slaveStartExec(slaveStartExec),
     .slaveStartExecAccept(slaveStartExecAccept), ///// the slave dma is ready to start
 
-    .slaveFinExec(slaveFinExec), ///// the slave dma is finished, so we can go to triggering next
+    .mgsFinExec(mgsFinExec), ///// the slave dma is finished, so we can go to triggering next
 
     .slave_bank1_out_src_addr(slave_bank1_out_src_addr) ,      // actually it is a reg
     .slave_bank1_out_src_size(slave_bank1_out_src_size) ,      // actually it is a reg
