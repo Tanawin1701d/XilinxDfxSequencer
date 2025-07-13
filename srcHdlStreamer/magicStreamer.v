@@ -78,6 +78,10 @@ always @(posedge clk, negedge reset) begin
                     end else if (loadReset) begin
                         amt_load_bytes <= 0;
                         storeIntr <= 0;
+                    end else if (storeInit) begin
+                        state <= STATUS_STORE;
+                    end else if (loadInit) begin
+                        state <= STATUS_LOAD;
                     end
             end
             //////////// case store data to the mainMemory
