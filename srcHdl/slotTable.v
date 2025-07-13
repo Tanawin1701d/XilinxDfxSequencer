@@ -1,6 +1,6 @@
 module SlotArr #(
 
-    parameter INDEX_WIDTH = 2, // 2 ^ 2 = 4 slots
+    parameter INDEX_WIDTH = 3, // 2 ^ 2 = 4 slots
     parameter SRC_ADDR_WIDTH = 32,
     parameter SRC_SIZE_WIDTH = 26,
     parameter DST_ADDR_WIDTH = 32,
