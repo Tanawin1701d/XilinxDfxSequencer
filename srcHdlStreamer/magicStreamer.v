@@ -1,7 +1,8 @@
-module my_axis_slave #
+module MagicStreammerTop #
 (
     parameter integer DATA_WIDTH        = 32, 
-    parameter integer STORAGE_IDX_WIDTH = 10     //// 4 Kb
+    parameter integer STORAGE_IDX_WIDTH = 10,     //// 4 Kb
+    parameter integer STATE_BIT_WIDTH   = 4
 )
 (
     input wire                        clk,
@@ -15,11 +16,11 @@ module my_axis_slave #
     input  wire                      S_AXI_TLAST,
 
     // AXIS Master Interface load interface
-    output  wire [DATA_WIDTH-1:0]     M_AXI_TDATA,
-    output  wire [DATA_WIDTH/8-1:0]   M_AXI_TKEEP,  // <= tkeep added
-    output  wire                      M_AXI_TVALID,
-    input   wire                      M_AXI_TREADY,
-    output  wire                      M_AXI_TLAST,
+    output  reg [DATA_WIDTH-1:0]     M_AXI_TDATA,    // it is supposed to be reg
+    output  wire [DATA_WIDTH/8-1:0]   M_AXI_TKEEP,    // it is supposed to be reg
+    output  reg                      M_AXI_TVALID,    // it is supposed to be reg
+    input   wire                     M_AXI_TREADY,    // it is supposed to be reg
+    output  reg                      M_AXI_TLAST,    // it is supposed to be reg
 
     // control signal 
 
@@ -41,13 +42,14 @@ module my_axis_slave #
 
 
 ///// declare state
-localparam STATE_BIT_WIDTH = 4;
-localparam STATUS_IDLE  = 4'b0000;
-localparam STATUS_STORE = 4'b0001;
-localparam STATUS_LOAD  = 4'b0010;
+
+localparam STATUS_IDLE       = 4'b0000;
+localparam STATUS_STORE      = 4'b0001;
+localparam STATUS_LOAD       = 4'b0010;
+localparam STATUS_CLEAN_LOAD = 4'b0011;
 
 ///// meta data 
-reg[DATA_WIDTH-1: 0] mainMem [0: ((1 << STORAGE_IDX_WIDTH) - 1)];
+(* ram_style = "block" *) reg[DATA_WIDTH-1: 0] mainMem [0: ((1 << STORAGE_IDX_WIDTH) - 1)];
 
 reg[STATE_BIT_WIDTH  -1: 0] state;
 reg[STORAGE_IDX_WIDTH-1: 0] amt_store_bytes; ///// store to this block
@@ -63,10 +65,7 @@ wire[STORAGE_IDX_WIDTH-1: 0] pooled_addr = (state == STATUS_STORE) ? amt_store_b
 ///////// store
 assign S_AXI_TREADY = (state == STATUS_STORE) && S_AXI_TVALID;
 ///////// load
-assign M_AXI_TDATA   = mainMem[pooled_addr];
 assign M_AXI_TKEEP   = 4'b1111;
-assign M_AXI_TVALID  = (state == STATUS_LOAD);
-assign M_AXI_TLAST   = (state == STATUS_LOAD) && (amt_load_bytes == (amt_store_bytes-1));
 ///////// interrupt signal
 assign finStore = storeIntr;
 /////////// debug signal
@@ -102,7 +101,6 @@ always @(posedge clk, negedge reset) begin
             //////////// case store data to the internal memory
             STATUS_STORE    : begin 
                 if (S_AXI_TVALID)begin //// we are sure that ready will send this time              
-                    mainMem[pooled_addr] <= S_AXI_TDATA;
                     amt_store_bytes <= amt_store_bytes + 1;
                     if (S_AXI_TLAST)begin
                         storeIntr <= 1;
@@ -110,20 +108,31 @@ always @(posedge clk, negedge reset) begin
                     end
                 end
             end
-            //////////// case load data from the mainMemory
-            STATUS_LOAD    : begin 
-                if (M_AXI_TREADY) begin
+            STATUS_LOAD    : begin
+                if (M_AXI_TREADY | (amt_load_bytes == 0)) begin ///// we are ready to send current data
+                    M_AXI_TVALID   <= 1;
+                    M_AXI_TLAST    <= (amt_load_bytes == (amt_store_bytes-1)); // it is the last data
                     amt_load_bytes <= amt_load_bytes + 1;
-                    if (amt_load_bytes == (amt_store_bytes-1)) begin //// assume that amt_store_bytes >= 1
-                        state <= STATUS_IDLE;      //// we are sure that valid will send this time              
-                    end
+                    state <= (amt_load_bytes == (amt_store_bytes-1)) ? STATUS_CLEAN_LOAD : STATUS_LOAD; // if we have sent all the data then go to clean load state
                 end
+                
             end
+            STATUS_CLEAN_LOAD: begin 
+                ////// now the tvalid is set we must do some thing to not send the data again
+                M_AXI_TVALID <= 0;
+                M_AXI_TLAST  <= 0;
+                if (M_AXI_TREADY) begin
+                    state <= STATUS_IDLE; // go back to idle state
+                end
+
+            end
+
             default: begin end
 
         endcase
     end 
 
 end
+
 
 endmodule

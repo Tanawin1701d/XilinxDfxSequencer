@@ -570,9 +570,6 @@ MagicSeqCore #(
     .slaveInit         (slaveInit), ///// trigger slave dma to do somthing
     .slaveFinInit      (slaveFinInit),
 
-    .slaveStartExec(slaveStartExec),
-    .slaveStartExecAccept(slaveStartExecAccept), ///// the slave dma is ready to start
-
     .mgsFinExec(mgsFinExec), ///// the slave dma is finished, so we can go to triggering next
 
     .slave_bank1_out_src_addr(slave_bank1_out_src_addr) ,      // actually it is a reg
