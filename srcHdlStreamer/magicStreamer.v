@@ -2,7 +2,7 @@ module MagicStreammerTop #
 (
     parameter integer DATA_WIDTH        = 32, 
     parameter integer STORAGE_IDX_WIDTH = 10,     //// 4 Kb
-    parameter integer STATE_BIT_WIDTH   = 4
+    parameter integer STATE_BIT_WIDTH   =  4
 )
 (
     input wire                        clk,
@@ -17,7 +17,7 @@ module MagicStreammerTop #
 
     // AXIS Master Interface load interface
     output  reg [DATA_WIDTH-1:0]     M_AXI_TDATA,    // it is supposed to be reg
-    output  wire [DATA_WIDTH/8-1:0]   M_AXI_TKEEP,    // it is supposed to be reg
+    output  wire [DATA_WIDTH/8-1:0]  M_AXI_TKEEP,    // it is supposed to be reg
     output  reg                      M_AXI_TVALID,    // it is supposed to be reg
     input   wire                     M_AXI_TREADY,    // it is supposed to be reg
     output  reg                      M_AXI_TLAST,    // it is supposed to be reg
@@ -46,7 +46,6 @@ module MagicStreammerTop #
 localparam STATUS_IDLE       = 4'b0000;
 localparam STATUS_STORE      = 4'b0001;
 localparam STATUS_LOAD       = 4'b0010;
-localparam STATUS_CLEAN_LOAD = 4'b0011;
 
 ///// meta data 
 (* ram_style = "block" *) reg[DATA_WIDTH-1: 0] mainMem [0: ((1 << STORAGE_IDX_WIDTH) - 1)];
@@ -55,8 +54,6 @@ reg[STATE_BIT_WIDTH  -1: 0] state;
 reg[STORAGE_IDX_WIDTH-1: 0] amt_store_bytes; ///// store to this block
 reg[STORAGE_IDX_WIDTH-1: 0] amt_load_bytes;  ///// load to this block
 reg storeIntr;
-
-wire[STORAGE_IDX_WIDTH-1: 0] pooled_addr = (state == STATUS_STORE) ? amt_store_bytes : amt_load_bytes;
 
 /////////////////////////////////////
 ////// axi signal assign ////////////
@@ -94,13 +91,13 @@ always @(posedge clk, negedge reset) begin
                         storeIntr      <= 0;
                     end else if (storeInit) begin
                         state <= STATUS_STORE;
-                    end else if (loadInit) begin
+                    end else if (loadInit & (amt_store_bytes > 0)) begin
                         state <= STATUS_LOAD;
                     end
             end
             //////////// case store data to the internal memory
             STATUS_STORE    : begin 
-                if (S_AXI_TVALID)begin //// we are sure that ready will send this time              
+                if (S_AXI_TVALID)begin //// we are sure that ready will send this time
                     amt_store_bytes <= amt_store_bytes + 1;
                     if (S_AXI_TLAST)begin
                         storeIntr <= 1;
@@ -109,29 +106,53 @@ always @(posedge clk, negedge reset) begin
                 end
             end
             STATUS_LOAD    : begin
-                if (M_AXI_TREADY | (amt_load_bytes == 0)) begin ///// we are ready to send current data
-                    M_AXI_TVALID   <= 1;
-                    M_AXI_TLAST    <= (amt_load_bytes == (amt_store_bytes-1)); // it is the last data
-                    amt_load_bytes <= amt_load_bytes + 1;
-                    state <= (amt_load_bytes == (amt_store_bytes-1)) ? STATUS_CLEAN_LOAD : STATUS_LOAD; // if we have sent all the data then go to clean load state
+                if (M_AXI_TREADY | (amt_load_bytes == 0)) begin //// last sending is success in this cycle/ send next
+
+                    if ( amt_load_bytes == amt_store_bytes )begin
+                        /////// no data to send anymore
+                        M_AXI_TVALID <= 0;
+                        M_AXI_TLAST  <= 0;
+                        state <= STATUS_IDLE;
+                    end else begin
+                        M_AXI_TVALID <= 1;
+                        M_AXI_TLAST  <= (amt_load_bytes == (amt_store_bytes-1));
+                        amt_load_bytes <= amt_load_bytes + 1;
+                    end
+
                 end
+                ///// at here do nothing just wait for signal
                 
             end
-            STATUS_CLEAN_LOAD: begin 
-                ////// now the tvalid is set we must do some thing to not send the data again
-                M_AXI_TVALID <= 0;
-                M_AXI_TLAST  <= 0;
-                if (M_AXI_TREADY) begin
-                    state <= STATUS_IDLE; // go back to idle state
-                end
 
-            end
 
             default: begin end
 
         endcase
     end 
 
+end
+
+
+
+///// M_DATA and MEM management
+
+always @(posedge clk) begin
+    if (state == STATUS_STORE)begin
+        if (S_AXI_TVALID)begin
+            mainMem[amt_store_bytes] <=  S_AXI_TDATA;
+        end
+        
+    end else if (state == STATUS_LOAD) begin
+
+        if (M_AXI_TREADY | (amt_load_bytes == 0))begin
+            if (amt_load_bytes == amt_store_bytes)begin
+                M_AXI_TDATA <= 48;
+            end else begin
+                M_AXI_TDATA <= mainMem[amt_load_bytes];
+            end
+        end
+        
+    end
 end
 
 
