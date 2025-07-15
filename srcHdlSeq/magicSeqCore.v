@@ -149,10 +149,21 @@ localparam STATUS_W4SLAVERESET   = 4'b0010;
 localparam STATUS_W4SLAVEOP      = 4'b0011;
 localparam STATUS_CLEAR_MGS      = 4'b0100;
 localparam STATUS_INITIALIZE_MGS = 4'b0101; // initialize magic streamer, to reset magic streamer and start the streaming
-localparam STATUS_INITIALIZE_DMA = 4'b0110; // the system is initializing, we can trigger the slave to do something
-localparam STATUS_TRIGGERING     = 4'b0111;
-localparam STATUS_WAIT4FIN       = 4'b1000;
-localparam STATUS_PAUSEONERROR   = 4'b1001; // the system is paused on error, we can not do anything
+localparam STATUS_INITIALIZE_DMA = 4'b0110; // the state will reset the interrupt signal
+localparam STATUS_SET_DMA_LOAD   = 4'b0111; // the system is setting the dma load, we can trigger the slave to do something
+localparam STATUS_SET_DMA_STORE  = 4'b1000; // the system is setting the dma store, we can trigger the slave to do something
+localparam STATUS_TRIGGERING     = 4'b1001;
+localparam STATUS_WAIT4FIN       = 4'b1010;
+localparam STATUS_PAUSEONERROR   = 4'b1011; // the system is paused on error, we can not do anything
+
+
+///////////// task for dma
+localparam DMA_TASK_RESET_INTR_BEG = 0; // reset the interrupt signal task
+localparam DMA_TASK_RESET_INTR_END = 1; // reset the interrupt signal
+localparam DMA_TASK_LOAD_TASK_BEG  = 2;  // load task begin
+localparam DMA_TASK_LOAD_TASK_END  = 4;  // load task end
+localparam DMA_TASK_STORE_TASK_BEG = 5; // store task begin
+localparam DMA_TASK_STORE_TASK_END = 7; // store task end
 
 localparam CTRL_CLEAR            = 4'b0000;
 localparam CTRL_SHUTDOWN         = 4'b0001;
@@ -420,26 +431,59 @@ always @(posedge clk or negedge reset ) begin
             end
             STATUS_W4SLAVEOP: begin
                 if (nslaveReset) begin
-                    mainStatus  <= STATUS_INITIALIZE_MGS;
+                    mainStatus  <= STATUS_CLEAR_MGS;
                 end
             end
             STATUS_CLEAR_MGS: begin
                 mainStatus <= STATUS_INITIALIZE_MGS;
             end
             STATUS_INITIALIZE_MGS: begin
-                    mainStatus  <= STATUS_INITIALIZE_MGS;
+                    mainStatus  <= STATUS_INITIALIZE_DMA;
                     dmaInitTask <= 1;
             end
             STATUS_INITIALIZE_DMA: begin
                 // do nothing, just keep the current status
                 // we can trigger the slave to do something
-                if (slaveFinInit[DMA_INIT_TASK_CNT - 1]) begin /// slaveFinInit is one cycle
-                    mainStatus <= STATUS_TRIGGERING; // go to triggering state
-                    dmaInitTask <= 0; //// clear the sequence tracker
-                    ///// TODO if next dmaExecTask will be 1 if the state should be used
+                if (slaveFinInit[DMA_TASK_RESET_INTR_END]) begin /// slaveFinInit is one cycle
+                    if(bank1_out_ld_mask[0])begin
+                        dmaInitTask <= 1 << DMA_TASK_LOAD_TASK_BEG; /// shift to the next task
+                        mainStatus  <= STATUS_SET_DMA_LOAD;
+                    end else if(bank1_out_st_mask[0]) begin
+                        dmaInitTask <= 1 << DMA_TASK_STORE_TASK_BEG; /// shift to the next task
+                        mainStatus  <= STATUS_SET_DMA_STORE;
+                    end else begin
+                        dmaInitTask <= 0; /// no task to do
+                        mainStatus  <= STATUS_TRIGGERING; // go to load state
+                    end
                 end else if (slaveFinInit != 0) begin
                     dmaInitTask <= dmaInitTask << 1; /// shift to the next task
                 end
+            end
+            STATUS_SET_DMA_LOAD: begin
+                // do nothing, just keep the current status
+                // we can trigger the slave to do something
+                if (slaveFinInit[DMA_TASK_LOAD_TASK_END]) begin /// slaveFinInit is one cycle
+                    if(bank1_out_st_mask[0]) begin
+                        dmaInitTask <= 1 << DMA_TASK_STORE_TASK_BEG; /// shift to the next task
+                        mainStatus <= STATUS_SET_DMA_STORE; // go to store state
+                    end else begin
+                        dmaInitTask <= 0;
+                        mainStatus  <= STATUS_TRIGGERING; // go to triggering state
+                    end
+                end else if (slaveFinInit != 0) begin
+                    dmaInitTask <= dmaInitTask << 1; /// shift to the next task
+                end
+
+            end
+            STATUS_SET_DMA_STORE: begin
+                // do nothing, just keep the current status
+                // we can trigger the slave to do something
+                if (slaveFinInit[DMA_TASK_STORE_TASK_END]) begin /// slaveFinInit is one cycle
+                    dmaInitTask <= 0; /// no task to do
+                    mainStatus <= STATUS_TRIGGERING; // go to triggering state
+                end else if (slaveFinInit != 0) begin
+                    dmaInitTask <= dmaInitTask << 1; /// shift to the next task
+                end 
             end
             STATUS_TRIGGERING: begin
                 mainStatus <= STATUS_WAIT4FIN;

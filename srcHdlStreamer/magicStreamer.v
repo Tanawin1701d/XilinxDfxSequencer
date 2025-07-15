@@ -1,4 +1,4 @@
-module MagicStreammerTop #
+module MagicStreammerCore #
 (
     parameter integer DATA_WIDTH        = 32, 
     parameter integer STORAGE_IDX_WIDTH = 10,     //// 4 Kb
@@ -33,7 +33,7 @@ module MagicStreammerTop #
     output wire finStore,
 
     // out put wire for debugging
-    output wire [STATE_BIT_WIDTH-1:0] dbg_state,
+    output wire [STATE_BIT_WIDTH-1:0]   dbg_state,
     output wire [STORAGE_IDX_WIDTH-1:0] dbg_amt_store_bytes,
     output wire [STORAGE_IDX_WIDTH-1:0] dbg_amt_load_bytes
 
