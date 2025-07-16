@@ -31,21 +31,13 @@ always @(posedge clk or negedge reset) begin
         M_AXI_TKEEP  <= 0; // Reset tkeep
         M_AXI_TVALID <= 1'b0; // Reset valid signal
         M_AXI_TLAST  <= 1'b0; // Reset last signal
-    end else if (M_AXI_TVALID == M_AXI_TREADY) begin
-        ////// now destination ready to renew
-        M_AXI_TDATA  <=  S_AXI_TDATA;
-        M_AXI_TKEEP  <=  S_AXI_TKEEP;
-        M_AXI_TVALID <=  S_AXI_TVALID;
-        M_AXI_TLAST  <=  S_AXI_TLAST;
+    end else if ( (!M_AXI_TVALID) || M_AXI_TREADY) begin // if valid then ready must be asserted
+           M_AXI_TDATA  <=  S_AXI_TDATA;
+           M_AXI_TKEEP  <=  S_AXI_TKEEP;
+           M_AXI_TVALID <=  S_AXI_TVALID;
+           M_AXI_TLAST  <=  S_AXI_TLAST; 
     end
-
-
 end
-
-
-
-
-
 
 
 endmodule
