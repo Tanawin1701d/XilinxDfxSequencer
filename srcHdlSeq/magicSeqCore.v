@@ -299,7 +299,7 @@ assign bank1_set_fin_profile        = ext_bank1_set_fin_profile |
 assign bank1_set_fin_ld_mask        = ext_bank1_set_fin_ld_mask;
 assign bank1_set_fin_st_mask        = ext_bank1_set_fin_st_mask;
 assign bank1_set_fin_intr_mask_ack  = mainStatus == STATUS_WAIT4FIN; //// this is internal only set
-assign bank1_set_fin_intr_mask_abs  = ext_bank1_set_fin_st_intr_mask_abs | (mainStatus == STATUS_CLEAR_MGS); //// this is internal reset and external write
+assign bank1_set_fin_intr_mask_abs  = ext_bank1_set_fin_st_intr_mask_abs; //// this is internal reset and external write
 
 
 ///////////////////////////////////////////////

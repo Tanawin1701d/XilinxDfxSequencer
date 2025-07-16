@@ -353,9 +353,9 @@ s_axi_write #(
     .ext_bank1_set_des_size(ext_bank1_set_des_size),
     .ext_bank1_set_status(ext_bank1_set_status),
     .ext_bank1_set_profile(ext_bank1_set_profile),
-    .ext_bank1_set_fin_ld_mask(ext_bank1_set_fin_ld_mask),
-    .ext_bank1_set_fin_st_mask(ext_bank1_set_fin_st_mask),
-    .ext_bank1_set_fin_st_intr_mask_abs(ext_bank1_set_fin_st_intr_mask_abs),
+    .ext_bank1_set_ld_mask(ext_bank1_set_ld_mask),
+    .ext_bank1_set_st_mask(ext_bank1_set_st_mask),
+    .ext_bank1_set_st_intr_mask_abs(ext_bank1_set_st_intr_mask_abs),
     //// bank0 interconnect
     .ext_bank0_inp_control(ext_bank0_inp_control),
     .ext_bank0_set_control(ext_bank0_set_control),

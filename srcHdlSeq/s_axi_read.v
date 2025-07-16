@@ -33,7 +33,7 @@ module s_axi_read #(
     output wire                   S_AXI_ARREADY,
 
     // Read Data Channel
-    output reg  [DATA_WIDTH-1:0]   S_AXI_RDATA, ////// read data output acctually it is a reg
+    output reg  [DATA_WIDTH-1:0]   S_AXI_RDATA, ////// read data output acctually it is a wire
     output wire [1:0]              S_AXI_RRESP,
     output wire                    S_AXI_RVALID,
     input  wire                    S_AXI_RREADY,

@@ -57,9 +57,9 @@ module s_axi_write #(
     output reg ext_bank1_set_des_size,             // actually it is wire
     output reg ext_bank1_set_status,               // actually it is wire
     output reg ext_bank1_set_profile,              // actually it is wire
-    output reg ext_bank1_set_fin_ld_mask,          // actually it is wire
-    output reg ext_bank1_set_fin_st_mask,          // actually it is wire
-    output reg ext_bank1_set_fin_st_intr_mask_abs, // actually it is wire
+    output reg ext_bank1_set_ld_mask,          // actually it is wire
+    output reg ext_bank1_set_st_mask,          // actually it is wire
+    output reg ext_bank1_set_st_intr_mask_abs, // actually it is wire
 
     //// bank0 interconnect
     output wire [BANK0_CONTROL_WIDTH-1:0] ext_bank0_inp_control, /// set control data
@@ -164,9 +164,9 @@ always @(*) begin
     ext_bank1_set_des_size    = 0; // Default value
     ext_bank1_set_status      = 0; // Default value
     ext_bank1_set_profile     = 0; // Default value
-    ext_bank1_set_fin_ld_mask            = 0;
-    ext_bank1_set_fin_st_mask            = 0;
-    ext_bank1_set_fin_st_intr_mask_abs   = 0;
+    ext_bank1_set_ld_mask            = 0;
+    ext_bank1_set_st_mask            = 0;
+    ext_bank1_set_st_intr_mask_abs   = 0;
 
     
 
@@ -197,9 +197,9 @@ always @(*) begin
                     4'b0011: begin ext_bank1_set_des_size             = 1; end // set destination size
                     4'b0100: begin ext_bank1_set_status               = 1; end // set status
                     4'b0101: begin ext_bank1_set_profile              = 1; end // set profile
-                    4'b0110: begin ext_bank1_set_fin_ld_mask          = 1; end // set load mask
-                    4'b0111: begin ext_bank1_set_fin_st_mask          = 1; end // set store mask
-                    4'b1000: begin ext_bank1_set_fin_st_intr_mask_abs = 1; end // set store interrupt mask
+                    4'b0110: begin ext_bank1_set_ld_mask          = 1; end // set load mask
+                    4'b0111: begin ext_bank1_set_st_mask          = 1; end // set store mask
+                    4'b1000: begin ext_bank1_set_st_intr_mask_abs = 1; end // set store interrupt mask
                     default: begin end // Default case for unsupported addresses
                 endcase
             end
