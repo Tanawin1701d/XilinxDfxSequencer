@@ -23,7 +23,7 @@ module DummyStreammerPt #
 );
 
 
-assign S_AXI_TREADY = S_AXI_TVALID && (M_AXI_TVALID == M_AXI_TREADY); // Ready when valid and master is ready
+assign S_AXI_TREADY = S_AXI_TVALID && ((!M_AXI_TVALID) || M_AXI_TREADY); // Ready when valid and master is ready
 
 always @(posedge clk or negedge reset) begin
     if (~reset) begin
