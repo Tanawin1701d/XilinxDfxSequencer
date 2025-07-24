@@ -79,13 +79,13 @@ module s_axi_write #(
 
     
     output wire [BANK0_INTR_WIDTH-1: 0]  ext_bank0_inp_intrEna, //// input data for the interrupt counter
-    output wire                          ext_bank0_set_intrEna, //// set the interrupt counter ONLY when the system is in shutdown state
+    output reg                           ext_bank0_set_intrEna, //// set the interrupt counter ONLY when the system is in shutdown state
 
     output wire [BANK0_INTR_WIDTH-1: 0]  ext_bank0_inp_intr, //// input data for the interrupt counter
-    output wire                          ext_bank0_set_intr, //// set the interrupt counter ONLY when the system is in shutdown state
+    output reg                           ext_bank0_set_intr, //// set the interrupt counter ONLY when the system is in shutdown state
     
     output wire [BANK0_ROUNDTRIP_WIDTH-1: 0]  ext_bank0_inp_roundTrip, /// input data for the round trip counter
-    output wire                               ext_bank0_set_roundTrip /// set the round trip counter ONLY when the system is in shutdown state
+    output reg                                ext_bank0_set_roundTrip /// set the round trip counter ONLY when the system is in shutdown state
 
 
 );
@@ -196,6 +196,7 @@ always @(*) begin
     ext_bank0_set_dfxCtrlAddr = 0; // Default value
     ext_bank0_set_intrEna     = 0; // Default value
     ext_bank0_set_intr        = 0; // Default value
+    ext_bank0_set_roundTrip   = 0; // Default value
     
 
     if (state == ST_DATA) begin

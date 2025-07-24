@@ -50,7 +50,7 @@ class MagicSeqdDriver(DefaultIP):
         self.LIM_AMT_SLOT = 4 ### limit amount slot
         
 
-    bindto = ['user.org:user:MagicSeqTop:1.0']
+    bindto = ['user.org:user:MagicSeqTop:1.0', 'user.org:user:MagicSeqTopIntr:1.0']
 
     def genAddr(self, bankId, rowIdx, colIdx):
         return (bankId << self.BL_BNK_ST) | (rowIdx << self.BL_ROW_ST) | (colIdx << self.BL_COL_ST)
