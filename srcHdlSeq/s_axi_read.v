@@ -21,7 +21,9 @@ module s_axi_read #(
 
     parameter BANK0_CONTROL_WIDTH = 4,
     parameter BANK0_STATUS_WIDTH  = 4,
-    parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH /// the counter for the sequencer
+    parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH, /// the counter for the sequencer
+    parameter BANK0_INTR_WIDTH  = 1,       /// the interrupt for the sequencer
+    parameter BANK0_ROUNDTRIP_WIDTH = 16 /// the round trip counter for the sequencer
 ) (
 
     input  wire clk,
@@ -53,11 +55,16 @@ module s_axi_read #(
     input   wire                             ext_bank1_out_ready,         // actually it is a wire
 
     ////// bank0 interconnect
-    input wire [BANK0_STATUS_WIDTH -1:0] ext_bank0_out_status,  /// read only and it is reg
-    input wire [BANK0_CNT_WIDTH    -1:0] ext_bank0_out_mainCnt,     /// read only
-    input wire [BANK0_CNT_WIDTH    -1:0] ext_bank0_out_endCnt,      /// read only
-    input wire [GLOB_ADDR_WIDTH    -1:0] ext_bank0_out_dmaBaseAddr,
-    input wire [GLOB_ADDR_WIDTH    -1:0] ext_bank0_out_dfxCtrlAddr
+    input wire [BANK0_STATUS_WIDTH   -1: 0] ext_bank0_out_status,  /// read only and it is reg
+    input wire [BANK0_CNT_WIDTH      -1: 0] ext_bank0_out_mainCnt,     /// read only
+    input wire [BANK0_CNT_WIDTH      -1: 0] ext_bank0_out_endCnt,      /// read only
+    input wire [GLOB_ADDR_WIDTH      -1: 0] ext_bank0_out_dmaBaseAddr,
+    input wire [GLOB_ADDR_WIDTH      -1: 0] ext_bank0_out_dfxCtrlAddr,
+    input wire [BANK0_INTR_WIDTH     -1: 0] ext_bank0_out_intrEna, //// output data for the round counter
+    input wire [BANK0_INTR_WIDTH     -1: 0] ext_bank0_out_intr,  //// output data for the interrupt counter
+    input wire [BANK0_ROUNDTRIP_WIDTH-1: 0] ext_bank0_out_roundTrip
+
+
     
 );
 
@@ -119,13 +126,16 @@ always @(*) begin
         if (read_addr[15:14] == 2'b00) begin
 
             case (read_addr[13:6]) // Address bits 13 to 6 determine the slot
-                8'h00:   begin S_AXI_RDATA = 0;                                                                 end
-                8'h01:   begin S_AXI_RDATA = { {(DATA_WIDTH-BANK0_STATUS_WIDTH){1'b0}}, ext_bank0_out_status }; end // read status register
-                8'h02:   begin S_AXI_RDATA = { {(DATA_WIDTH- BANK1_INDEX_WIDTH){1'b0}}, ext_bank0_out_mainCnt}; end// read main counter register
-                8'h03:   begin S_AXI_RDATA = { {(DATA_WIDTH- BANK1_INDEX_WIDTH){1'b0}}, ext_bank0_out_endCnt }; end// read end counter register
-                8'h04:   begin S_AXI_RDATA = ext_bank0_out_dmaBaseAddr;                                         end
-                8'h05:   begin S_AXI_RDATA = ext_bank0_out_dfxCtrlAddr;                                         end
-                default: begin S_AXI_RDATA = 0;                                                                 end// Default case for unsupported addresses
+                8'h00:   begin S_AXI_RDATA = 0;                                                                         end
+                8'h01:   begin S_AXI_RDATA = { {(DATA_WIDTH-BANK0_STATUS_WIDTH){1'b0}}, ext_bank0_out_status };         end // read status register
+                8'h02:   begin S_AXI_RDATA = { {(DATA_WIDTH- BANK1_INDEX_WIDTH){1'b0}}, ext_bank0_out_mainCnt};         end// read main counter register
+                8'h03:   begin S_AXI_RDATA = { {(DATA_WIDTH- BANK1_INDEX_WIDTH){1'b0}}, ext_bank0_out_endCnt };         end// read end counter register
+                8'h04:   begin S_AXI_RDATA = ext_bank0_out_dmaBaseAddr;                                                 end
+                8'h05:   begin S_AXI_RDATA = ext_bank0_out_dfxCtrlAddr;                                                 end
+                8'h06:   begin S_AXI_RDATA = { {(DATA_WIDTH - BANK0_INTR_WIDTH){1'b0}}, ext_bank0_out_intrEna};         end // read round counter register
+                8'h07:   begin S_AXI_RDATA = { {(DATA_WIDTH - BANK0_INTR_WIDTH){1'b0}}, ext_bank0_out_intr };           end // read interrupt register
+                8'h08:   begin S_AXI_RDATA = { {(DATA_WIDTH - BANK0_ROUNDTRIP_WIDTH){1'b0}}, ext_bank0_out_roundTrip }; end // read round trip counter register
+                default: begin S_AXI_RDATA = 0;                                                                         end// Default case for unsupported addresses
             endcase
 
         end else if (read_addr[15:14] == 2'b01) begin

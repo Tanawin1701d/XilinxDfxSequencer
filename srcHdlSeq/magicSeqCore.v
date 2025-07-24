@@ -16,6 +16,8 @@ module MagicSeqCore #(
     parameter BANK0_CONTROL_WIDTH = 4,
     parameter BANK0_STATUS_WIDTH  = 4,
     parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH, /// the counter for the sequencer
+    parameter BANK0_INTR_WIDTH    = 1, /// the interrupt for the sequencer
+    parameter BANK0_ROUNDTRIP_WIDTH = 16, /// the round trip counter for the sequencer
 
     parameter DMA_INIT_TASK_CNT   = 8, //// (reset interrupt + startReadChannel + baseAddr0 + size0) + (startWriteChannel + baseAddr1 + size1)
     parameter DMA_EXEC_TASK_CNT   = 1
@@ -86,6 +88,7 @@ module MagicSeqCore #(
     //////////////////////////////////////////////////////////
     input wire [BANK0_CONTROL_WIDTH-1:0] ext_bank0_inp_control, /// set control data
     input wire                           ext_bank0_set_control, /// set control signal
+    input wire                           hw_ctrl_start,
 
     output wire [BANK0_STATUS_WIDTH-1:0] ext_bank0_out_status,  /// read only and it is reg
 
@@ -102,6 +105,20 @@ module MagicSeqCore #(
     input  wire [GLOB_ADDR_WIDTH-1: 0]   ext_bank0_inp_dfxCtrlAddr,
     input  wire                          ext_bank0_set_dfxCtrlAddr,
     output wire [GLOB_ADDR_WIDTH-1: 0]   ext_bank0_out_dfxCtrlAddr,
+
+    input  wire [BANK0_INTR_WIDTH-1: 0]  ext_bank0_inp_intrEna, //// input data for the interrupt counter
+    input  wire                          ext_bank0_set_intrEna, //// set the interrupt counter ONLY when the system is in shutdown state
+    output wire[BANK0_INTR_WIDTH-1: 0]   ext_bank0_out_intrEna, //// output data for the interrupt counter
+
+    input wire [BANK0_INTR_WIDTH-1: 0]  ext_bank0_inp_intr, //// input data for the interrupt counter
+    input wire                          ext_bank0_set_intr, //// set the interrupt counter ONLY when the system is in shutdown state
+    output wire[BANK0_INTR_WIDTH-1: 0]  ext_bank0_out_intr, //// output data for the interrupt counter
+    input                               hw_intr_clear, //// clear the interrupt signal
+
+    input wire [BANK0_ROUNDTRIP_WIDTH-1: 0]  ext_bank0_inp_roundTrip, /// input data for the round trip counter
+    input wire                               ext_bank0_set_roundTrip, /// set the round trip counter ONLY when the system is in shutdown state
+    output wire [BANK0_ROUNDTRIP_WIDTH-1: 0] ext_bank0_out_roundTrip, /// output data for the round trip counter
+
 
 
     //////////////////////////////////////////////////////////
@@ -154,7 +171,7 @@ localparam STATUS_SET_DMA_LOAD   = 4'b0111; // the system is setting the dma loa
 localparam STATUS_SET_DMA_STORE  = 4'b1000; // the system is setting the dma store, we can trigger the slave to do something
 localparam STATUS_TRIGGERING     = 4'b1001;
 localparam STATUS_WAIT4FIN       = 4'b1010;
-localparam STATUS_PAUSEONERROR   = 4'b1011; // the system is paused on error, we can not do anything
+localparam STATUS_PAUSEONERROR   = 4'b1111; // the system is paused on error, we can not do anything
 
 
 ///////////// task for dma
@@ -173,16 +190,25 @@ localparam CTRL_START            = 4'b0010;
 ////// BANK 0 slot table wire declaration ///////
 /////////////////////////////////////////////////
 
-reg [BANK0_STATUS_WIDTH-1   : 0]    mainStatus;
-reg [BANK0_CNT_WIDTH   -1   : 0]    mainCnt;
-reg [(1 <<BANK0_CNT_WIDTH)-1: 0]    mainTrigger;
+reg [BANK0_STATUS_WIDTH-1   : 0]    mainStatus;   ///// 0x4
+reg [BANK0_CNT_WIDTH   -1   : 0]    mainCnt;      ///// 0x8
+reg [(1 <<BANK0_CNT_WIDTH)-1: 0]    mainTrigger;  
 assign slaveReprog = (mainStatus == STATUS_REPROG) ? mainTrigger : 0; //// we want only when it is in stage reprogramming(only 1 cycle)
-reg [BANK0_CNT_WIDTH   -1:0]    endCnt;
+reg [BANK0_CNT_WIDTH   -1:0]    endCnt; ///// 0xC
 
-reg [GLOB_ADDR_WIDTH   -1:0]    dmaBaseAddr;
-reg [GLOB_ADDR_WIDTH   -1:0]    dfxCtrlAddr;
+reg [GLOB_ADDR_WIDTH   -1:0]    dmaBaseAddr; ///// 0x10
+reg [GLOB_ADDR_WIDTH   -1:0]    dfxCtrlAddr; ///// 0x14
+
+reg [BANK0_INTR_WIDTH      -1:0]    intrEna;
+reg [BANK0_INTR_WIDTH      -1:0]    intr;
+reg [BANK0_ROUNDTRIP_WIDTH -1:0]    roundTrip; /// the round trip counter
 
 reg [DMA_INIT_TASK_CNT -1:0]    dmaInitTask;
+////////////////////////////////////////////////
+////// restart signal declaration //////////////
+////////////////////////////////////////////////
+wire finishRound = (mainStatus == STATUS_WAIT4FIN) && (mainCnt == endCnt);
+
 /////////////////////////////////////////////////
 ////// BANK 1 slot table wire declaration ///////
 /////////////////////////////////////////////////
@@ -348,9 +374,9 @@ always @(posedge clk or negedge reset)begin
     end
 
 end
-///////////////////////////////////
-//////////// dma address setting///
-///////////////////////////////////
+///////////////////////////////////////////
+//////////// dma address setting        ///
+///////////////////////////////////////////
 assign ext_bank0_out_dfxCtrlAddr = dfxCtrlAddr;
 always @(posedge clk or negedge reset)begin
     if (~reset) begin
@@ -359,8 +385,55 @@ always @(posedge clk or negedge reset)begin
         if (ext_bank0_set_dfxCtrlAddr) begin
             dfxCtrlAddr <= ext_bank0_inp_dfxCtrlAddr;
         end
+    end 
+end
+
+///////////////////////////////////////////
+//////////// interrupt  enable          ///
+///////////////////////////////////////////
+assign ext_bank0_out_intrEna = intrEna;
+always @(posedge clk or negedge reset) begin
+    if (~reset) begin
+        intrEna <= 0;
+    end else if (mainStatus == STATUS_SHUTDOWN) begin
+        if (ext_bank0_set_intrEna) begin
+            intrEna <= ext_bank0_inp_intrEna; // set the interrupt enable signal
+        end
     end
 end
+
+///////////////////////////////////////////
+//////////// interrupt signal           ///
+///////////////////////////////////////////
+assign ext_bank0_out_intr = intr;
+always @(posedge clk or negedge reset) begin
+    if (~reset) begin
+        intr <= 0;
+    end else if (mainStatus == STATUS_SHUTDOWN) begin
+        if ((ext_bank0_set_intr && ext_bank0_inp_intr) || hw_intr_clear) begin
+            intr <= 0; // reset the interrupt signal
+        end
+    end else if (finishRound && intrEna)begin 
+            intr <= 1;
+    end
+end
+
+///////////////////////////////////////////
+//////////// round trip                 ///
+///////////////////////////////////////////
+assign ext_bank0_out_roundTrip = roundTrip;
+always @(posedge clk or negedge reset) begin
+    if (~reset) begin
+        roundTrip <= 0;
+    end else if (mainStatus == STATUS_SHUTDOWN) begin
+        if (ext_bank0_set_roundTrip) begin
+            roundTrip <= ext_bank0_inp_roundTrip; // set the round trip counter
+        end
+    end else if (finishRound) begin
+        roundTrip <= roundTrip + 1; // increment the round trip counter
+    end
+end
+
 
 /////////////////////////////////////////////////////
 //////////// dma and mgs stream initialization //////
@@ -396,7 +469,7 @@ always @(posedge clk or negedge reset ) begin
                 mainStatus <= STATUS_SHUTDOWN;
             end
             CTRL_START: begin
-                if (mainStatus == STATUS_SHUTDOWN) begin
+                if ( (mainStatus == STATUS_SHUTDOWN) && (~intr) ) begin
                     mainStatus <= STATUS_REPROG;
                     mainCnt    <= 0; // reset the counter
                     mainTrigger<= 1;
@@ -410,7 +483,11 @@ always @(posedge clk or negedge reset ) begin
         
         case (mainStatus)
             STATUS_SHUTDOWN: begin
-                // do nothing, just keep the current status
+                if (hw_ctrl_start && (~intr)) begin
+                    mainStatus <= STATUS_REPROG; // go to reprogramming state
+                    mainCnt    <= 0; // reset the counter
+                    mainTrigger <= 1; // set the trigger to 1
+                end
             end
             STATUS_REPROG: begin
                 // do nothing, just keep the current status

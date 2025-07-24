@@ -16,9 +16,12 @@ module MagicSeqTop #(
     parameter BANK1_LD_MSK_WIDTH   =  8,
     parameter BANK1_ST_MSK_WIDTH   =  8,
 
-    parameter BANK0_CONTROL_WIDTH = 4,
-    parameter BANK0_STATUS_WIDTH  = 4,
-    parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH, /// the counter for the sequencer
+    parameter BANK0_CONTROL_WIDTH    = 4,
+    parameter BANK0_STATUS_WIDTH     = 4,
+    parameter BANK0_CNT_WIDTH        = BANK1_INDEX_WIDTH, /// the counter for the sequencer
+    parameter BANK0_INTR_WIDTH       = 1, /// the round counter for the sequencer
+    parameter BANK0_ROUNDTRIP_WIDTH  = 16, /// the round trip counter for the sequencer
+
 
     parameter DMA_INIT_TASK_CNT   = 8, //// (baseAddr0 + size0) + (baseAddr1 + size1)
     parameter DMA_EXEC_TASK_CNT   = 1
@@ -115,7 +118,11 @@ output wire [DMA_INIT_TASK_CNT-1: 0]  dbg_slaveInit, ///// trigger slave dma to 
 output wire [DMA_INIT_TASK_CNT-1: 0]  dbg_slaveFinInit,
 
 output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExec,
-output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExecAccept ///// the slave dma is ready to start
+output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExecAccept, ///// the slave dma is ready to start
+
+    // controller
+input wire hw_ctrl_start,
+input wire hw_intr_clear
 
 );
 
@@ -198,6 +205,18 @@ output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExecAccept ///// the slave dm
     wire [GLOB_ADDR_WIDTH-1: 0]   ext_bank0_inp_dfxCtrlAddr;
     wire                          ext_bank0_set_dfxCtrlAddr;
     wire [GLOB_ADDR_WIDTH-1: 0]   ext_bank0_out_dfxCtrlAddr;
+
+    wire [BANK0_INTR_WIDTH-1: 0]  ext_bank0_inp_intrEna; //// input data for the interrupt counter
+    wire                          ext_bank0_set_intrEna; //// set the interrupt counter ONLY when the system is in shutdown state
+    wire[BANK0_INTR_WIDTH-1: 0]   ext_bank0_out_intrEna; //// output data for the interrupt counter
+
+    wire [BANK0_INTR_WIDTH-1: 0]  ext_bank0_inp_intr; //// input data for the interrupt counter
+    wire                          ext_bank0_set_intr; //// set the interrupt counter ONLY when the system is in shutdown state
+    wire [BANK0_INTR_WIDTH-1: 0]  ext_bank0_out_intr; //// output data for the interrupt counter
+
+    wire [BANK0_ROUNDTRIP_WIDTH-1: 0]  ext_bank0_inp_roundTrip; /// input data for the round trip counter
+    wire                               ext_bank0_set_roundTrip; /// set the round trip counter ONLY when the system is in shutdown state
+    wire [BANK0_ROUNDTRIP_WIDTH-1: 0]  ext_bank0_out_roundTrip; /// output data for the round trip counter    
     //////////////////////////////////////////////////////////
     // slave functionality                         ///////////
     //////////////////////////////////////////////////////////
@@ -252,7 +271,9 @@ s_axi_read #(
 
     .BANK0_CONTROL_WIDTH(BANK0_CONTROL_WIDTH),
     .BANK0_STATUS_WIDTH(BANK0_STATUS_WIDTH),
-    .BANK0_CNT_WIDTH(BANK0_CNT_WIDTH)
+    .BANK0_CNT_WIDTH(BANK0_CNT_WIDTH),
+    .BANK0_INTR_WIDTH(BANK0_INTR_WIDTH),
+    .BANK0_ROUNDTRIP_WIDTH(BANK0_ROUNDTRIP_WIDTH)
 ) ps_axi_reader(
     .clk(clk),
     .reset(reset),
@@ -288,7 +309,10 @@ s_axi_read #(
     .ext_bank0_out_mainCnt(ext_bank0_out_mainCnt),     /// read only
     .ext_bank0_out_endCnt(ext_bank0_out_endCnt),     /// read only
     .ext_bank0_out_dmaBaseAddr(ext_bank0_out_dmaBaseAddr),
-    .ext_bank0_out_dfxCtrlAddr(ext_bank0_out_dfxCtrlAddr)
+    .ext_bank0_out_dfxCtrlAddr(ext_bank0_out_dfxCtrlAddr),
+    .ext_bank0_out_intrEna(ext_bank0_out_intrEna),
+    .ext_bank0_out_intr(ext_bank0_out_intr),
+    .ext_bank0_out_roundTrip(ext_bank0_out_roundTrip) /// output data for the round trip counter
 
 );
 
@@ -314,7 +338,9 @@ s_axi_write #(
 
     .BANK0_CONTROL_WIDTH(BANK0_CONTROL_WIDTH),
     .BANK0_STATUS_WIDTH(BANK0_STATUS_WIDTH),
-    .BANK0_CNT_WIDTH(BANK0_CNT_WIDTH)
+    .BANK0_CNT_WIDTH(BANK0_CNT_WIDTH),
+    .BANK0_INTR_WIDTH(BANK0_INTR_WIDTH),
+    .BANK0_ROUNDTRIP_WIDTH(BANK0_ROUNDTRIP_WIDTH)
 ) ps_axi_writer(
     .clk(clk),
     .reset(reset),
@@ -364,7 +390,13 @@ s_axi_write #(
     .ext_bank0_inp_dmaBaseAddr(ext_bank0_inp_dmaBaseAddr),
     .ext_bank0_set_dmaBaseAddr(ext_bank0_set_dmaBaseAddr),
     .ext_bank0_inp_dfxCtrlAddr(ext_bank0_inp_dfxCtrlAddr),
-    .ext_bank0_set_dfxCtrlAddr(ext_bank0_set_dfxCtrlAddr)
+    .ext_bank0_set_dfxCtrlAddr(ext_bank0_set_dfxCtrlAddr),
+    .ext_bank0_inp_intrEna(ext_bank0_inp_intrEna),
+    .ext_bank0_set_intrEna(ext_bank0_set_intrEna),
+    .ext_bank0_inp_intr(ext_bank0_inp_intr),
+    .ext_bank0_set_intr(ext_bank0_set_intr),
+    .ext_bank0_inp_roundTrip(ext_bank0_inp_roundTrip), /// input data for the round trip counter
+    .ext_bank0_set_roundTrip(ext_bank0_set_roundTrip)  /// set the round trip counter ONLY when the system is in shutdown state
 );
 
 
@@ -485,6 +517,8 @@ MagicSeqCore #(
     .BANK0_CONTROL_WIDTH(BANK0_CONTROL_WIDTH),
     .BANK0_STATUS_WIDTH(BANK0_STATUS_WIDTH),
     .BANK0_CNT_WIDTH(BANK0_CNT_WIDTH),
+    .BANK0_INTR_WIDTH(BANK0_INTR_WIDTH),
+    .BANK0_ROUNDTRIP_WIDTH(BANK0_ROUNDTRIP_WIDTH),
     .DMA_INIT_TASK_CNT(DMA_INIT_TASK_CNT),
     .DMA_EXEC_TASK_CNT(DMA_EXEC_TASK_CNT)
 ) magicSeqCore(
@@ -541,6 +575,7 @@ MagicSeqCore #(
 
     .ext_bank0_inp_control(ext_bank0_inp_control),
     .ext_bank0_set_control(ext_bank0_set_control),
+    .hw_ctrl_start(hw_ctrl_start),
 
     .ext_bank0_out_status(ext_bank0_out_status),
     
@@ -558,6 +593,18 @@ MagicSeqCore #(
     .ext_bank0_set_dfxCtrlAddr(ext_bank0_set_dfxCtrlAddr),
     .ext_bank0_out_dfxCtrlAddr(ext_bank0_out_dfxCtrlAddr),
 
+    .ext_bank0_inp_intrEna(ext_bank0_inp_intrEna),
+    .ext_bank0_set_intrEna(ext_bank0_set_intrEna),
+    .ext_bank0_out_intrEna(ext_bank0_out_intrEna),
+    
+    .ext_bank0_inp_intr(ext_bank0_inp_intr),
+    .ext_bank0_set_intr(ext_bank0_set_intr),
+    .ext_bank0_out_intr(ext_bank0_out_intr),
+    .hw_intr_clear(hw_intr_clear),
+
+    .ext_bank0_inp_roundTrip(ext_bank0_inp_roundTrip),
+    .ext_bank0_set_roundTrip(ext_bank0_set_roundTrip),
+    .ext_bank0_out_roundTrip(ext_bank0_out_roundTrip),
     /////// communicate with slave
 
     .slaveReprog(slaveReprog), ///// trigger slave dma to reprogram

@@ -17,7 +17,11 @@ module s_axi_write #(
 
     parameter BANK0_CONTROL_WIDTH = 4,
     parameter BANK0_STATUS_WIDTH  = 4,
-    parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH /// the counter for the sequencer
+    parameter BANK0_CNT_WIDTH     = BANK1_INDEX_WIDTH, /// the counter for the sequencer
+    parameter BANK0_INTR_WIDTH    = 1, /// the interrupt for the sequencer
+    parameter BANK0_ROUNDTRIP_WIDTH = 16 /// the round trip counter for the sequencer
+
+
 )(
     input  wire                   clk,
     input  wire                   reset,
@@ -71,7 +75,19 @@ module s_axi_write #(
     output wire [GLOB_ADDR_WIDTH-1: 0]    ext_bank0_inp_dmaBaseAddr,
     output reg                            ext_bank0_set_dmaBaseAddr,
     output wire [GLOB_ADDR_WIDTH-1: 0]    ext_bank0_inp_dfxCtrlAddr,
-    output reg                           ext_bank0_set_dfxCtrlAddr
+    output reg                           ext_bank0_set_dfxCtrlAddr,
+
+    
+    output wire [BANK0_INTR_WIDTH-1: 0]  ext_bank0_inp_intrEna, //// input data for the interrupt counter
+    output wire                          ext_bank0_set_intrEna, //// set the interrupt counter ONLY when the system is in shutdown state
+
+    output wire [BANK0_INTR_WIDTH-1: 0]  ext_bank0_inp_intr, //// input data for the interrupt counter
+    output wire                          ext_bank0_set_intr, //// set the interrupt counter ONLY when the system is in shutdown state
+    
+    output wire [BANK0_ROUNDTRIP_WIDTH-1: 0]  ext_bank0_inp_roundTrip, /// input data for the round trip counter
+    output wire                               ext_bank0_set_roundTrip /// set the round trip counter ONLY when the system is in shutdown state
+
+
 );
 
 
@@ -155,6 +171,10 @@ assign ext_bank0_inp_endCnt         = S_AXI_WDATA[BANK0_CNT_WIDTH    -1:0]; /// 
 assign ext_bank0_inp_dmaBaseAddr    = S_AXI_WDATA[GLOB_ADDR_WIDTH    -1:0]; 
 assign ext_bank0_inp_dfxCtrlAddr    = S_AXI_WDATA[GLOB_ADDR_WIDTH    -1:0];
 
+assign ext_bank0_inp_intrEna        = S_AXI_WDATA[BANK0_INTR_WIDTH   -1:0]; /// input data for the interrupt Ena counter
+assign ext_bank0_inp_intr           = S_AXI_WDATA[BANK0_INTR_WIDTH   -1:0]; /// input data for the interrupt counter
+assign ext_bank0_inp_roundTrip      = S_AXI_WDATA[BANK0_ROUNDTRIP_WIDTH-1:0]; /// input data for the round trip counter
+
 /////////// block control write signals
 
 always @(*) begin
@@ -174,16 +194,22 @@ always @(*) begin
     ext_bank0_set_endCnt      = 0; // Default value
     ext_bank0_set_dmaBaseAddr = 0; // Default value
     ext_bank0_set_dfxCtrlAddr = 0; // Default value
+    ext_bank0_set_intrEna     = 0; // Default value
+    ext_bank0_set_intr        = 0; // Default value
     
 
     if (state == ST_DATA) begin
         case (write_addr[15:14])
             2'b00: begin
                 case (write_addr[13:6]) // Address bits 13 to 6 determine the slot
-                    8'h00: begin ext_bank0_set_control = 1; end
-                    8'h03: begin ext_bank0_set_endCnt  = 1; end
+                    8'h00: begin ext_bank0_set_control     = 1; end
+                    /// cannot write to status register
+                    8'h03: begin ext_bank0_set_endCnt      = 1; end
                     8'h04: begin ext_bank0_set_dmaBaseAddr = 1; end
                     8'h05: begin ext_bank0_set_dfxCtrlAddr = 1; end
+                    8'h06: begin ext_bank0_set_intrEna     = 1; end // set interrupt enable
+                    8'h07: begin ext_bank0_set_intr        = 1; end // set interrupt
+                    8'h08: begin ext_bank0_set_roundTrip   = 1; end // set round trip counter
                     default: begin end
                 endcase
             end
@@ -191,12 +217,12 @@ always @(*) begin
             2'b01: begin
 
                 case (write_addr[5:2]) // Address bits 5 to 2 determine the slot
-                    4'b0000: begin ext_bank1_set_src_addr             = 1; end // set source address
-                    4'b0001: begin ext_bank1_set_src_size             = 1; end // set source size
-                    4'b0010: begin ext_bank1_set_des_addr             = 1; end // set destination address
-                    4'b0011: begin ext_bank1_set_des_size             = 1; end // set destination size
-                    4'b0100: begin ext_bank1_set_status               = 1; end // set status
-                    4'b0101: begin ext_bank1_set_profile              = 1; end // set profile
+                    4'b0000: begin ext_bank1_set_src_addr         = 1; end // set source address
+                    4'b0001: begin ext_bank1_set_src_size         = 1; end // set source size
+                    4'b0010: begin ext_bank1_set_des_addr         = 1; end // set destination address
+                    4'b0011: begin ext_bank1_set_des_size         = 1; end // set destination size
+                    4'b0100: begin ext_bank1_set_status           = 1; end // set status
+                    4'b0101: begin ext_bank1_set_profile          = 1; end // set profile
                     4'b0110: begin ext_bank1_set_ld_mask          = 1; end // set load mask
                     4'b0111: begin ext_bank1_set_st_mask          = 1; end // set store mask
                     4'b1000: begin ext_bank1_set_st_intr_mask_abs = 1; end // set store interrupt mask
