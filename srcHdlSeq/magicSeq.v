@@ -120,9 +120,10 @@ output wire [DMA_INIT_TASK_CNT-1: 0]  dbg_slaveFinInit,
 output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExec,
 output wire [DMA_EXEC_TASK_CNT-1: 0] dbg_slaveStartExecAccept, ///// the slave dma is ready to start
 
-    // controller
+// controller signal
 input wire hw_ctrl_start,
-input wire hw_intr_clear
+input wire hw_intr_clear,
+output wire hw_intr
 
 );
 
@@ -213,6 +214,8 @@ input wire hw_intr_clear
     wire [BANK0_INTR_WIDTH-1: 0]  ext_bank0_inp_intr; //// input data for the interrupt counter
     wire                          ext_bank0_set_intr; //// set the interrupt counter ONLY when the system is in shutdown state
     wire [BANK0_INTR_WIDTH-1: 0]  ext_bank0_out_intr; //// output data for the interrupt counter
+    ///// assign for the output signal
+    assign hw_intr = ext_bank0_out_intr[0]; /// the first bit is the interrupt signal
 
     wire [BANK0_ROUNDTRIP_WIDTH-1: 0]  ext_bank0_inp_roundTrip; /// input data for the round trip counter
     wire                               ext_bank0_set_roundTrip; /// set the round trip counter ONLY when the system is in shutdown state
