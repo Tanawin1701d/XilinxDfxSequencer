@@ -21,14 +21,20 @@ class MagicSeqdDriver(DefaultIP):
         self.BIT_ROW_SZ = 8
         self.BIT_BNK_SZ = 2
 
-        self.REG_CTRL     = (0,0,0)
-        self.REG_ST       = (0,1,0)
-        self.REG_MAINCNT  = (0,2,0)
-        self.REG_ENDCNT   = (0,3,0)
-        self.REG_DMA_ADDR = (0,4,0)
-        self.REG_DFX_ADDR = (0,5,0)
+        #### bank 0 register address meta
+        ######(bankId, rowIdx, colIdx)
+        self.REG_CTRL       = (0,0,0)
+        self.REG_ST         = (0,1,0)
+        self.REG_MAINCNT    = (0,2,0)
+        self.REG_ENDCNT     = (0,3,0)
+        self.REG_DMA_ADDR   = (0,4,0)
+        self.REG_DFX_ADDR   = (0,5,0)
+        self.REG_INTR_ENA   = (0,6,0)
+        self.REG_INTR       = (0,7,0)
+        self.REG_ROUND_TRIP = (0,8,0)
 
         #### the row must be change to match the slot
+        ######(bankId, rowIdx(row can vary), colIdx)
         self.SLOT_SRC_ADDR    = (1,0,0)
         self.SLOT_SRC_SIZE    = (1,0,1)
         self.SLOT_DES_ADDR    = (1,0,2)
@@ -66,6 +72,12 @@ class MagicSeqdDriver(DefaultIP):
         return self.read(self.genAddr(*self.REG_DMA_ADDR))
     def getDfxAddr(self):
         return self.read(self.genAddr(*self.REG_DFX_ADDR))
+    def getIntrEna(self):
+        return self.read(self.genAddr(*self.REG_INTR_ENA))
+    def getIntr(self):
+        return self.read(self.genAddr(*self.REG_INTR))
+    def getRoundTrip(self):
+        return self.read(self.genAddr(*self.REG_ROUND_TRIP))
     
     def getSlot(self, slotIdx):
 
@@ -108,6 +120,12 @@ class MagicSeqdDriver(DefaultIP):
         return self.write(self.genAddr(*self.REG_DMA_ADDR), value)
     def setDfxAddr(self, value):
         return self.write(self.genAddr(*self.REG_DFX_ADDR), value)
+    def setIntrEna(self, value):
+        return self.write(self.genAddr(*self.REG_INTR_ENA), value)
+    def setIntr(self, value):
+        return self.write(self.genAddr(*self.REG_INTR), value)
+    def setRoundTrip(self, value):
+        return self.write(self.genAddr(*self.REG_ROUND_TRIP), value)
     
     def setSlot(self, slotT, slotIdx, value):
         addr  = self.genAddrForSlot(slotT, slotIdx) 
@@ -150,6 +168,11 @@ class MagicSeqdDriver(DefaultIP):
         self.setControl(1)
         print("[cmd] shutdown successfully")
 
+    def clearIntr(self):
+        print("[cmd] clear the interrupt")
+        self.setIntr(1) # it is write on clear register
+        print("[cmd] clear the interrupt successfully")
+
     def startEngine(self):
         print("[cmd] start the engine")
         self.setControl(2)
@@ -182,6 +205,12 @@ class MagicSeqdDriver(DefaultIP):
         print("--------> DMAADDR  = ", hex(dmaAddr))
         dfxAddr = self.getDfxAddr()
         print("--------> DFXADDR  = ", hex(dfxAddr))
+        intrEna = self.getIntrEna()
+        print("--------> INTR_ENA = ", hex(intrEna))
+        intr    = self.getIntr()
+        print("--------> INTR     = ", hex(intr))
+        roundTrip = self.getRoundTrip()
+        print("--------> ROUND_TRIP = ", hex(roundTrip))
 
 
     def printSlotData(self):
