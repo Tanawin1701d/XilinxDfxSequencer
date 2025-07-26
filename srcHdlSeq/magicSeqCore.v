@@ -207,7 +207,7 @@ reg [DMA_INIT_TASK_CNT -1:0]    dmaInitTask;
 ////////////////////////////////////////////////
 ////// restart signal declaration //////////////
 ////////////////////////////////////////////////
-wire finishRound = (mainStatus == STATUS_WAIT4FIN) && (mainCnt == endCnt);
+wire finishRound = (mainStatus == STATUS_WAIT4FIN) && (mainCnt == endCnt) && (slave_bank1_out_st_mask == slave_bank1_out_st_intr_mask); ///// the round trip is finished when the mainCnt is equal to endCnt and the slave has finished executing
 
 /////////////////////////////////////////////////
 ////// BANK 1 slot table wire declaration ///////
