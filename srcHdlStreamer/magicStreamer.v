@@ -10,14 +10,14 @@ module MagicStreammerCore #
 
     // AXIS Slave Interface   store in terface
     input  wire [DATA_WIDTH-1:0]     S_AXI_TDATA,
-    input  wire [DATA_WIDTH/8-1:0]   S_AXI_TKEEP,  // <= tkeep added
+//    input  wire [DATA_WIDTH/8-1:0]   S_AXI_TKEEP,  // <= tkeep added        //// we disable tkeep
     input  wire                      S_AXI_TVALID,
     output wire                      S_AXI_TREADY,
     input  wire                      S_AXI_TLAST,
 
     // AXIS Master Interface load interface
     output  reg [DATA_WIDTH-1:0]     M_AXI_TDATA,    // it is supposed to be reg
-    output  wire [DATA_WIDTH/8-1:0]  M_AXI_TKEEP,    // it is supposed to be reg
+//    output  wire [DATA_WIDTH/8-1:0]  M_AXI_TKEEP,    // it is supposed to be reg
     output  reg                      M_AXI_TVALID,    // it is supposed to be reg
     input   wire                     M_AXI_TREADY,    // it is supposed to be reg
     output  reg                      M_AXI_TLAST,    // it is supposed to be reg
@@ -34,8 +34,8 @@ module MagicStreammerCore #
 
     // out put wire for debugging
     output wire [STATE_BIT_WIDTH-1:0]   dbg_state,
-    output wire [STORAGE_IDX_WIDTH-1:0] dbg_amt_store_bytes,
-    output wire [STORAGE_IDX_WIDTH-1:0] dbg_amt_load_bytes
+    output wire [(STORAGE_IDX_WIDTH+1)-1:0] dbg_amt_store_bytes,
+    output wire [(STORAGE_IDX_WIDTH+1)-1:0] dbg_amt_load_bytes
 
 );
 
@@ -47,12 +47,14 @@ localparam STATUS_IDLE       = 4'b0000;
 localparam STATUS_STORE      = 4'b0001;
 localparam STATUS_LOAD       = 4'b0010;
 
+localparam TRACKER_IDX_WIDTH = STORAGE_IDX_WIDTH + 1; ///// this is for tracker index width
+
 ///// meta data 
 (* ram_style = "block" *) reg[DATA_WIDTH-1: 0] mainMem [0: ((1 << STORAGE_IDX_WIDTH) - 1)];
 
 reg[STATE_BIT_WIDTH  -1: 0] state;
-reg[STORAGE_IDX_WIDTH-1: 0] amt_store_bytes; ///// store to this block
-reg[STORAGE_IDX_WIDTH-1: 0] amt_load_bytes;  ///// load to this block
+reg[TRACKER_IDX_WIDTH-1: 0] amt_store_bytes; ///// store to this block
+reg[TRACKER_IDX_WIDTH-1: 0] amt_load_bytes;  ///// load to this block
 reg storeIntr;
 
 /////////////////////////////////////
@@ -62,7 +64,7 @@ reg storeIntr;
 ///////// store
 assign S_AXI_TREADY = (state == STATUS_STORE) && S_AXI_TVALID;
 ///////// load
-assign M_AXI_TKEEP   = 4'b1111;
+////assign M_AXI_TKEEP   = 4'b1111;
 ///////// interrupt signal
 assign finStore = storeIntr;
 /////////// debug signal
@@ -139,7 +141,7 @@ end
 always @(posedge clk) begin
     if (state == STATUS_STORE)begin
         if (S_AXI_TVALID)begin
-            mainMem[amt_store_bytes] <=  S_AXI_TDATA;
+            mainMem[amt_store_bytes[STORAGE_IDX_WIDTH-1: 0]] <=  S_AXI_TDATA;
         end
         
     end else if (state == STATUS_LOAD) begin
@@ -148,7 +150,7 @@ always @(posedge clk) begin
             if (amt_load_bytes == amt_store_bytes)begin
                 M_AXI_TDATA <= 48;
             end else begin
-                M_AXI_TDATA <= mainMem[amt_load_bytes];
+                M_AXI_TDATA <= mainMem[amt_load_bytes[STORAGE_IDX_WIDTH-1: 0]];
             end
         end
         
