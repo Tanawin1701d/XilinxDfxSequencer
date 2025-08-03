@@ -1,7 +1,8 @@
 module DummyStreamSlave #
 (
     parameter integer DATA_WIDTH        = 32, 
-    parameter integer STORAGE_IDX_WIDTH = 10     //// 4 Kb
+    parameter integer STORAGE_IDX_WIDTH = 10,     //// 4 Kb
+    parameter [0:0]   SINK_MODE         = 0
 )
 (
     // AXIS Slave Interface   store in terface
@@ -15,6 +16,6 @@ module DummyStreamSlave #
     input   wire reset
 );
 
-assign S_AXI_TREADY  = 1'b0; // Dummy implementation, always not ready
+assign S_AXI_TREADY  = SINK_MODE; // Dummy implementation, always not ready
 
 endmodule
