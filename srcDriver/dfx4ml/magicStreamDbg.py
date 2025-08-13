@@ -14,7 +14,7 @@ class MagicStreamDbg:
     STORE_STATE_ADDR = 0x0
 
 
-    def __init__(self, debugIps, idxWidths: list, wrapWidths):
+    def __init__(self, debugIps, idxWidths: list, wrapWidths: list):
 
         self.dbIps = debugIps
         self.dbIdxWidths = idxWidths.copy()
