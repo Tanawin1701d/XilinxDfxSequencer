@@ -45,7 +45,7 @@ class MagicStreamDbg:
     
     def getStoreAmtValue(self, streamIdx):
         rawValue =  self.dbIps[streamIdx].read(self.STORE_STATE_ADDR)
-        return self.cvtRawToStoreVal(rawValue)
+        return self.cvtRawToStoreVal(streamIdx, rawValue)
     
     def getStateValue(self, streamIdx):
         rawValue = self.dbIps[streamIdx].read(self.STORE_STATE_ADDR)
