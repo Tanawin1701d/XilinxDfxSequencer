@@ -14,25 +14,28 @@ class MagicStreamDbg:
     STORE_STATE_ADDR = 0x0
 
 
-    def __init__(self, debugIps, widthSizes):
+    def __init__(self, debugIps, idxWidths: list, wrapWidths):
 
         self.dbIps = debugIps
-        self.dbBws = widthSizes
+        self.dbIdxWidths = idxWidths.copy()
+        self.dbWrapWidths = wrapWidths.copy()
 
-        if len(debugIps) != len(widthSizes):
-            raise Exception("There are mismatch metadata of dubugIps and widthSizes")
+        if len(debugIps) != len(idxWidths):
+            raise Exception("There are mismatch metadata of dubugIps and idxWidths")
+        if len(debugIps) != len(wrapWidths):
+            raise Exception("There are mismatch metadata of dubugIps and wrapWidths")
 
     def createMask(self, length):
         return (1 << length) -1
 
     def cvtRawToStoreVal(self, streamIdx, rawData):
-        return rawData & self.createMask(self.dbBws[streamIdx]+ 1)
+        return rawData & self.createMask(self.dbIdxWidths[streamIdx]+ 1)
     
     def cvtRawToStateVal(self, streamIdx, rawData):
-        return rawData >> (self.dbBws[streamIdx] + 1)
+        return rawData >> (self.dbIdxWidths[streamIdx] + 1)
     
     def getMaxUsage(self, streamIdx):
-        width = self.dbBws[streamIdx]
+        width = self.dbIdxWidths[streamIdx]
 
         return 1 << width
 
@@ -48,7 +51,7 @@ class MagicStreamDbg:
         return self.cvtRawToStoreVal(streamIdx, rawValue)
     
     def convertAmtUseToByte(self, streamIdx, amtUse):
-        return int(amtUse * self.dbBws[streamIdx] / 8)
+        return int(amtUse * self.dbWrapWidths[streamIdx] / 8)
     
     def getStateValue(self, streamIdx):
         rawValue = self.dbIps[streamIdx].read(self.STORE_STATE_ADDR)
