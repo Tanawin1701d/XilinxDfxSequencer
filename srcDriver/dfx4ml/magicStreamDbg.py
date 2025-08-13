@@ -22,7 +22,7 @@ class MagicStreamDbg:
         if len(debugIps) != len(widthSizes):
             raise Exception("There are mismatch metadata of dubugIps and widthSizes")
 
-    def createMask(length):
+    def createMask(self, length):
         return (1 << length) -1
 
     def cvtRawToStoreVal(self, streamIdx, rawData):
@@ -47,6 +47,9 @@ class MagicStreamDbg:
         rawValue =  self.dbIps[streamIdx].read(self.STORE_STATE_ADDR)
         return self.cvtRawToStoreVal(streamIdx, rawValue)
     
+    def convertAmtUseToByte(self, streamIdx, amtUse):
+        return int(amtUse * self.dbBws[streamIdx] / 8)
+    
     def getStateValue(self, streamIdx):
         rawValue = self.dbIps[streamIdx].read(self.STORE_STATE_ADDR)
         stateValue = self.cvtRawToStateVal(streamIdx, rawValue)
@@ -65,6 +68,9 @@ class MagicStreamDbg:
         for idx in range(len(self.dbIps)):
             print(f"-------- STREAM {idx}----------")
             print(f"state: {self.getStateValue(idx)}")
-            print(f"amtLoad: {str(self.getLoadAmtValue(idx))} bytes/ {self.getMaxUsage(idx)} bytes")
-            print(f"amtStore: {str(self.getStoreAmtValue(idx))} bytes/ {self.getMaxUsage(idx)} bytes")
+            amtLoadInByte    = str(self.convertAmtUseToByte(idx,self.getLoadAmtValue(idx)))
+            amtStoreInByte   = str(self.convertAmtUseToByte(idx,self.getStoreAmtValue(idx)))
+            maxStorageInByte = str(self.convertAmtUseToByte(idx,self.getMaxUsage(idx)))
+            print(f"amtLoad: {str(amtLoadInByte)} bytes/ {maxStorageInByte} bytes")
+            print(f"amtStore: {str(amtStoreInByte)} bytes/ {maxStorageInByte} bytes")
         print("----------------------------------")
